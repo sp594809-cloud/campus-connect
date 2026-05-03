@@ -1,14 +1,14 @@
-import { Compass, Home, MessageCircle, User, Users } from "lucide-react";
+import { Calendar, Compass, Home, MessageCircle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type Tab = "home" | "discover" | "communities" | "messages" | "profile";
+export type Tab = "home" | "discover" | "communities" | "events" | "messages";
 
 const items: { id: Tab; label: string; Icon: typeof Home }[] = [
   { id: "home", label: "Home", Icon: Home },
   { id: "discover", label: "Discover", Icon: Compass },
   { id: "communities", label: "Groups", Icon: Users },
+  { id: "events", label: "Events", Icon: Calendar },
   { id: "messages", label: "Chats", Icon: MessageCircle },
-  { id: "profile", label: "Profile", Icon: User },
 ];
 
 export const BottomNav = ({
