@@ -1,16 +1,33 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { PhoneShell } from "@/components/campus/PhoneShell";
+import { BottomNav, type Tab } from "@/components/campus/BottomNav";
+import { HomeScreen } from "@/components/campus/screens/HomeScreen";
+import { DiscoverScreen } from "@/components/campus/screens/DiscoverScreen";
+import { CommunitiesScreen } from "@/components/campus/screens/CommunitiesScreen";
+import { MessagesScreen } from "@/components/campus/screens/MessagesScreen";
+import { ProfileScreen } from "@/components/campus/screens/ProfileScreen";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const Index = () => {
+  const [tab, setTab] = useState<Tab>("home");
+  const [openChatWith, setOpenChatWith] = useState<string | null>(null);
+
+  const goMessage = (id: string) => {
+    setOpenChatWith(id);
+    setTab("messages");
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
-    </div>
+    <PhoneShell>
+      {tab === "home" && <HomeScreen />}
+      {tab === "discover" && <DiscoverScreen onMessage={goMessage} />}
+      {tab === "communities" && <CommunitiesScreen />}
+      {tab === "messages" && (
+        <MessagesScreen openWith={openChatWith} onClearOpen={() => setOpenChatWith(null)} />
+      )}
+      {tab === "profile" && <ProfileScreen />}
+      <BottomNav active={tab} onChange={(t) => { setTab(t); setOpenChatWith(null); }} />
+    </PhoneShell>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
