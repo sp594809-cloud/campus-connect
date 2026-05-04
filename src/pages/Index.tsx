@@ -44,7 +44,7 @@ const StudentRegistrationForm = () => {
     try {
       // Query Supabase for the phone number
       const { data, error: queryError } = await supabase
-        .from("college_roster")
+        .from("student1")
         .select("full_name, enrollment_id, mobile_number")
         .eq("mobile_number", phoneNumber)
         .maybeSingle(); // Use maybeSingle() to handle 0 or 1 results
