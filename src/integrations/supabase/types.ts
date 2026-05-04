@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      college_roster: {
+        Row: {
+          branch: string | null
+          created_at: string | null
+          current_year: number | null
+          enrollment_id: string
+          full_name: string
+          id: string
+          mobile_number: string
+        }
+        Insert: {
+          branch?: string | null
+          created_at?: string | null
+          current_year?: number | null
+          enrollment_id: string
+          full_name: string
+          id?: string
+          mobile_number: string
+        }
+        Update: {
+          branch?: string | null
+          created_at?: string | null
+          current_year?: number | null
+          enrollment_id?: string
+          full_name?: string
+          id?: string
+          mobile_number?: string
+        }
+        Relationships: []
+      }
       communities: {
         Row: {
           admins_only: boolean
@@ -459,6 +489,27 @@ export type Database = {
           skills?: string[]
           updated_at?: string
           year?: Database["public"]["Enums"]["year_type"] | null
+        }
+        Relationships: []
+      }
+      verified_students: {
+        Row: {
+          created_at: string | null
+          enrollment_id: string | null
+          id: string
+          mobile_number: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          enrollment_id?: string | null
+          id?: string
+          mobile_number?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          enrollment_id?: string | null
+          id?: string
+          mobile_number?: string | null
         }
         Relationships: []
       }
