@@ -88,17 +88,53 @@ const StudentRegistrationForm = () => {
     } finally { setIsLoading(false); }
   };
 
-  const completeLogin = () => {
-    const session: StudentSession = {
-      full_name: fullName,
-      enrollment_id: enrollmentId,
-      phone_number: phoneNumber,
-      loggedInAt: new Date().toISOString(),
-      onboarded: mode === "login", // login → already onboarded; register → go through onboarding
-    };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    toast.success(`Welcome, ${fullName.split(" ")[0]}!`);
-    navigate(mode === "login" ? "/campus" : "/onboarding", { replace: true });
+  const completeLogin = async () => {
+    setIsLoading(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) {
+        const m = "You must be signed in. Please log in and try again.";
+        setError(m); toast.error(m);
+        navigate("/auth", { replace: true });
+        return;
+      }
+
+      if (mode === "register") {
+        // Block duplicates: enrollment_id is unique, phone_number is PK.
+        const { error: regErr } = await supabase
+          .from("registered_phones")
+          .insert({ phone_number: phoneNumber, full_name: fullName, enrollment_id: enrollmentId });
+        if (regErr) {
+          // 23505 = unique_violation
+          if ((regErr as any).code === "23505") {
+            const m = "This student is already registered. Please log in instead.";
+            setError(m); toast.error(m); return;
+          }
+          setError(regErr.message); toast.error(regErr.message); return;
+        }
+      }
+
+      // Sync the official roster name onto the user's profile so posts always show the right name.
+      const { error: profErr } = await supabase
+        .from("profiles")
+        .update({ name: fullName })
+        .eq("id", uid);
+      if (profErr) console.warn("profile name sync failed", profErr);
+
+      const session: StudentSession = {
+        full_name: fullName,
+        enrollment_id: enrollmentId,
+        phone_number: phoneNumber,
+        loggedInAt: new Date().toISOString(),
+        onboarded: mode === "login",
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      toast.success(`Welcome, ${fullName.split(" ")[0]}!`);
+      navigate(mode === "login" ? "/campus" : "/onboarding", { replace: true });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const switchMode = (m: Mode) => {
