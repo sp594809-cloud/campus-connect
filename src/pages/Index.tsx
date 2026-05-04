@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CheckCircle2, Hash, Loader2, Phone, User, XCircle } from "lucide-react";
+import { CheckCircle2, Hash, Loader2, Mail, Phone, User, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const SESSION_KEY = "campus_student_session";
@@ -32,7 +32,7 @@ export const getStudentSession = (): StudentSession | null => {
 };
 
 type Mode = "register" | "login";
-type Step = "phone" | "otp";
+type Step = "phone" | "email" | "otp";
 
 const StudentRegistrationForm = () => {
   const navigate = useNavigate();
@@ -44,6 +44,9 @@ const StudentRegistrationForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [generatedEmail, setGeneratedEmail] = useState("");
+  const [defaultEmail, setDefaultEmail] = useState("");
+  const [useCustomEmail, setUseCustomEmail] = useState(false);
+  const [customEmail, setCustomEmail] = useState("");
   const [sentOtp, setSentOtp] = useState("");
   const [otpInput, setOtpInput] = useState("");
   const [resendIn, setResendIn] = useState(0);
@@ -104,11 +107,27 @@ const StudentRegistrationForm = () => {
       setFullName(student.full_name);
       setEnrollmentId(student.enrollment_id);
       const email = `${student.enrollment_id}@mail.ljku.edu.in`;
+      setDefaultEmail(email);
       setGeneratedEmail(email);
+      setUseCustomEmail(false);
+      setCustomEmail("");
       setOtpInput("");
-      sendOtpToEmail(email);
-      setStep("otp");
+      setStep("email");
     } finally { setIsLoading(false); }
+  };
+
+  const confirmEmailAndSend = () => {
+    setError("");
+    const email = useCustomEmail ? customEmail.trim() : defaultEmail;
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!valid) {
+      const m = "Enter a valid email address.";
+      setError(m); toast.error(m); return;
+    }
+    setGeneratedEmail(email);
+    setOtpInput("");
+    sendOtpToEmail(email);
+    setStep("otp");
   };
 
   const completeLogin = async () => {
@@ -167,7 +186,8 @@ const StudentRegistrationForm = () => {
 
   const switchMode = (m: Mode) => {
     setMode(m); setStep("phone"); setError(""); setFullName(""); setEnrollmentId("");
-    setGeneratedEmail(""); setSentOtp(""); setOtpInput("");
+    setGeneratedEmail(""); setDefaultEmail(""); setCustomEmail(""); setUseCustomEmail(false);
+    setSentOtp(""); setOtpInput("");
   };
 
   return (
@@ -177,8 +197,9 @@ const StudentRegistrationForm = () => {
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
             <h1 className="text-2xl font-bold text-white">{mode === "register" ? "Student Registration" : "Welcome back"}</h1>
             <p className="text-indigo-100 text-sm mt-1">
-              {step === "phone" && "Step 1 of 2 — Verify your phone number"}
-              {step === "otp" && "Step 2 of 2 — Verify your college email"}
+              {step === "phone" && "Step 1 of 3 — Verify your phone number"}
+              {step === "email" && "Step 2 of 3 — Choose your email"}
+              {step === "otp" && "Step 3 of 3 — Enter verification code"}
             </p>
           </div>
 
@@ -219,7 +240,7 @@ const StudentRegistrationForm = () => {
                 <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-green-700 font-medium">
-                    Sending verification code to <span className="font-semibold">{generatedEmail}</span>
+                    Verification code sent to <span className="font-semibold">{generatedEmail}</span>
                   </p>
                 </div>
                 <div>
