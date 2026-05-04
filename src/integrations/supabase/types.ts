@@ -382,6 +382,36 @@ export type Database = {
           },
         ]
       }
+      otp_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          consumed: boolean
+          created_at: string
+          expires_at: string
+          id: string
+          phone_number: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          consumed?: boolean
+          created_at?: string
+          expires_at: string
+          id?: string
+          phone_number: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          consumed?: boolean
+          created_at?: string
+          expires_at?: string
+          id?: string
+          phone_number?: string
+        }
+        Relationships: []
+      }
       post_comments: {
         Row: {
           author_id: string
@@ -551,6 +581,27 @@ export type Database = {
           skills?: string[]
           updated_at?: string
           year?: Database["public"]["Enums"]["year_type"] | null
+        }
+        Relationships: []
+      }
+      registered_phones: {
+        Row: {
+          enrollment_id: string
+          full_name: string
+          phone_number: string
+          registered_at: string
+        }
+        Insert: {
+          enrollment_id: string
+          full_name: string
+          phone_number: string
+          registered_at?: string
+        }
+        Update: {
+          enrollment_id?: string
+          full_name?: string
+          phone_number?: string
+          registered_at?: string
         }
         Relationships: []
       }
