@@ -3,15 +3,43 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, CheckCircle2, XCircle, User, Phone, Hash } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+
+const SESSION_KEY = "campus_student_session";
+
+export type StudentSession = {
+  full_name: string;
+  enrollment_id: string;
+  phone_number: string;
+  loggedInAt: string;
+};
+
+export const getStudentSession = (): StudentSession | null => {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as StudentSession) : null;
+  } catch {
+    return null;
+  }
+};
 
 const StudentRegistrationForm = () => {
+  const navigate = useNavigate();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [fullName, setFullName] = useState("");
   const [enrollmentId, setEnrollmentId] = useState("");
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Persistence: if already logged in, skip registration
+  useEffect(() => {
+    const session = getStudentSession();
+    if (session) {
+      navigate("/app", { replace: true });
+    }
+  }, [navigate]);
 
   const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, ""); // Only allow digits
@@ -75,7 +103,7 @@ const StudentRegistrationForm = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!isVerified) {
@@ -83,14 +111,37 @@ const StudentRegistrationForm = () => {
       return;
     }
 
-    // Handle form submission here
-    console.log("Form submitted:", { phoneNumber, fullName, enrollmentId });
-    toast.success("Registration submitted successfully!");
+    setIsLoading(true);
+    try {
+      // Re-confirm against student1 to make sure the record still exists
+      const { data, error: queryError } = await supabase
+        .from("student1")
+        .select("full_name, enrollment_id, phone_number")
+        .eq("phone_number", phoneNumber)
+        .eq("enrollment_id", enrollmentId)
+        .maybeSingle();
 
-    // You can add additional logic here, such as:
-    // - Saving to another table
-    // - Sending confirmation email
-    // - Redirecting to next step
+      if (queryError || !data) {
+        toast.error("We couldn't confirm your record. Please verify again.");
+        return;
+      }
+
+      const session: StudentSession = {
+        full_name: data.full_name,
+        enrollment_id: data.enrollment_id,
+        phone_number: data.phone_number,
+        loggedInAt: new Date().toISOString(),
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+
+      toast.success(`Welcome, ${data.full_name.split(" ")[0]}!`);
+      navigate("/app", { replace: true });
+    } catch (err) {
+      console.error("Registration error:", err);
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleReset = () => {
