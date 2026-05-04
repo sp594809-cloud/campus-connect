@@ -1,13 +1,18 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, GraduationCap, Hash, LogOut, Phone, ShieldCheck, Sparkles, Target } from "lucide-react";
+import { ArrowLeft, Camera, GraduationCap, Hash, Loader2, LogOut, Phone, ShieldCheck, Sparkles, Target } from "lucide-react";
 import { toast } from "sonner";
 import { getStudentSession } from "./Index";
 import { InterestChip } from "@/components/campus/InterestChip";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const StudentProfile = () => {
   const navigate = useNavigate();
   const session = getStudentSession();
+  const { user, profile, refreshProfile } = useAuth();
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!session) navigate("/", { replace: true });
@@ -23,6 +28,27 @@ const StudentProfile = () => {
 
   const initials = session.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
 
+  const onPickAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; e.target.value = "";
+    if (!file) return;
+    if (!user) { toast.error("Sign in to upload a photo"); return; }
+    if (!file.type.startsWith("image/")) { toast.error("Please pick an image"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5MB"); return; }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const up = await supabase.storage.from("avatars").upload(path, file, { contentType: file.type, upsert: true });
+      if (up.error) throw up.error;
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      const { error } = await supabase.from("profiles").update({ avatar_url: data.publicUrl }).eq("id", user.id);
+      if (error) throw error;
+      await refreshProfile();
+      toast.success("Profile photo updated!");
+    } catch (err: any) { toast.error(err.message ?? "Upload failed"); }
+    finally { setUploading(false); }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary via-background to-accent-soft">
       <div className="mx-auto max-w-md min-h-screen bg-background relative shadow-elevated">
@@ -37,8 +63,16 @@ const StudentProfile = () => {
           <div className="rounded-3xl bg-gradient-hero p-5 text-primary-foreground shadow-elevated relative overflow-hidden">
             <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-accent/30 blur-2xl" />
             <div className="flex items-start gap-4 relative">
-              <div className="h-20 w-20 rounded-2xl bg-primary-foreground/20 ring-4 ring-primary-foreground/20 flex items-center justify-center font-bold text-2xl">
-                {initials}
+              <div className="relative">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt={session.full_name} className="h-20 w-20 rounded-2xl object-cover ring-4 ring-primary-foreground/20" />
+                ) : (
+                  <div className="h-20 w-20 rounded-2xl bg-primary-foreground/20 ring-4 ring-primary-foreground/20 flex items-center justify-center font-bold text-2xl">{initials}</div>
+                )}
+                <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickAvatar} />
+                <button onClick={() => fileRef.current?.click()} disabled={uploading} aria-label="Change photo" className="absolute -bottom-1.5 -right-1.5 h-8 w-8 rounded-full bg-accent text-accent-foreground shadow-soft flex items-center justify-center hover:scale-105 transition-smooth disabled:opacity-60">
+                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                </button>
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-1.5">

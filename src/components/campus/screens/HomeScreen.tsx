@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Heart, MessageCircle, Pin, Plus, Send, Share2, Sparkles, X, Paperclip, FileText } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,12 +23,14 @@ interface FeedPost {
   attachment_type: string | null;
   author: { name: string; avatar_url: string | null; branch: string | null; year: string | null; placement_status: string; company: string | null; college_email_verified: boolean } | null;
   likes: { user_id: string }[];
+  comments: { count: number }[];
 }
 
 const filters = ["All Campus", "My Branch", "My Interests"] as const;
 
 export const HomeScreen = () => {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [filter, setFilter] = useState<typeof filters[number]>("All Campus");
   const [showCompose, setShowCompose] = useState(false);
@@ -36,12 +39,13 @@ export const HomeScreen = () => {
   const [loading, setLoading] = useState(true);
   const [attachment, setAttachment] = useState<{ url: string; type: "image" | "pdf" } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [openComments, setOpenComments] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     const { data } = await supabase
       .from("posts")
-      .select("id,content,type,tag,pinned,created_at,author_id,attachment_url,attachment_type,author:profiles!posts_author_id_fkey(name,avatar_url,branch,year,placement_status,company,college_email_verified),likes:post_likes(user_id)")
+      .select("id,content,type,tag,pinned,created_at,author_id,attachment_url,attachment_type,author:profiles!posts_author_id_fkey(name,avatar_url,branch,year,placement_status,company,college_email_verified),likes:post_likes(user_id),comments:post_comments(count)")
       .order("pinned", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(50);
@@ -169,7 +173,7 @@ export const HomeScreen = () => {
                 <img src={avatarFor({ avatar_url: author?.avatar_url ?? null, name: author?.name ?? "?" })} alt="" loading="lazy" className="h-11 w-11 rounded-full object-cover ring-2 ring-background shadow-soft" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <p className="font-semibold text-sm truncate">{author?.name ?? "Unknown"}</p>
+                    <button onClick={() => post.author_id && navigate(`/u/${post.author_id}`)} className="font-semibold text-sm truncate hover:underline text-left">{author?.name ?? "Unknown"}</button>
                     {author?.college_email_verified && <span className="text-[10px]">✓</span>}
                     {author?.placement_status === "Placed" && author.company && (
                       <span className="text-[10px] bg-success/15 text-success font-bold px-1.5 py-0.5 rounded">@ {author.company}</span>
@@ -197,8 +201,8 @@ export const HomeScreen = () => {
                 <button onClick={() => toggleLike(post.id, liked)} className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-smooth", liked ? "text-accent bg-accent-soft" : "hover:bg-secondary")}>
                   <Heart className={cn("h-4 w-4", liked && "fill-current")} /> {post.likes.length}
                 </button>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-secondary transition-smooth">
-                  <MessageCircle className="h-4 w-4" /> 0
+                <button onClick={() => setOpenComments(post.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-secondary transition-smooth">
+                  <MessageCircle className="h-4 w-4" /> {post.comments?.[0]?.count ?? 0}
                 </button>
                 <button className="ml-auto p-1.5 rounded-full hover:bg-secondary transition-smooth" aria-label="Share"><Share2 className="h-4 w-4" /></button>
               </div>
@@ -206,6 +210,8 @@ export const HomeScreen = () => {
           );
         })}
       </div>
+
+      {openComments && <CommentsSheet postId={openComments} onClose={() => { setOpenComments(null); load(); }} />}
 
       {showCompose && (
         <div className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 overflow-y-auto animate-fade-in-up" onClick={() => setShowCompose(false)}>
@@ -241,6 +247,82 @@ export const HomeScreen = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+interface Comment { id: string; content: string; created_at: string; author_id: string; author?: { name: string; avatar_url: string | null } }
+
+const CommentsSheet = ({ postId, onClose }: { postId: string; onClose: () => void }) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [items, setItems] = useState<Comment[]>([]);
+  const [draft, setDraft] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    const { data } = await supabase
+      .from("post_comments")
+      .select("id,content,created_at,author_id")
+      .eq("post_id", postId)
+      .order("created_at", { ascending: true });
+    const rows = (data ?? []) as Comment[];
+    const ids = Array.from(new Set(rows.map((r) => r.author_id)));
+    if (ids.length) {
+      const { data: profs } = await supabase.from("profiles").select("id,name,avatar_url").in("id", ids);
+      const map = new Map((profs ?? []).map((p: any) => [p.id, p]));
+      rows.forEach((r) => { r.author = map.get(r.author_id) as any; });
+    }
+    setItems(rows);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, [postId]);
+
+  useEffect(() => {
+    const ch = supabase
+      .channel(`comments-${postId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "post_comments", filter: `post_id=eq.${postId}` }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [postId]);
+
+  const send = async () => {
+    if (!user || !draft.trim()) return;
+    const text = draft.trim().slice(0, 500);
+    setDraft("");
+    const { error } = await supabase.from("post_comments").insert({ post_id: postId, author_id: user.id, content: text });
+    if (error) toast.error(error.message);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm flex items-end justify-center animate-fade-in-up" onClick={onClose}>
+      <div className="bg-card rounded-t-3xl w-full max-w-md max-h-[80vh] flex flex-col animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <h3 className="font-bold">Comments</h3>
+          <button onClick={onClose} aria-label="Close" className="h-8 w-8 rounded-full hover:bg-secondary flex items-center justify-center"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {loading && <p className="text-center text-sm text-muted-foreground">Loading…</p>}
+          {!loading && items.length === 0 && <p className="text-center text-sm text-muted-foreground py-6">Be the first to comment 💬</p>}
+          {items.map((c) => (
+            <div key={c.id} className="flex gap-2.5">
+              <button onClick={() => navigate(`/u/${c.author_id}`)}>
+                <img src={c.author?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(c.author?.name ?? "?")}`} alt="" className="h-8 w-8 rounded-full object-cover" />
+              </button>
+              <div className="flex-1 bg-secondary rounded-2xl px-3 py-2">
+                <button onClick={() => navigate(`/u/${c.author_id}`)} className="text-xs font-bold hover:underline">{c.author?.name ?? "User"}</button>
+                <p className="text-sm whitespace-pre-wrap break-words">{c.content}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="p-3 border-t border-border flex items-center gap-2">
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Add a comment…" maxLength={500} className="flex-1 bg-secondary rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+          <button onClick={send} aria-label="Send" className="h-10 w-10 rounded-full bg-gradient-hero text-primary-foreground flex items-center justify-center shadow-glow"><Send className="h-4 w-4" /></button>
+        </div>
+      </div>
     </div>
   );
 };

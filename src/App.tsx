@@ -9,6 +9,7 @@ import Auth from "./pages/Auth.tsx";
 import CampusApp from "./pages/CampusApp.tsx";
 import StudentOnboarding from "./pages/StudentOnboarding.tsx";
 import StudentProfile from "./pages/StudentProfile.tsx";
+import UserProfile from "./pages/UserProfile.tsx";
 import { Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/onboarding" element={<StudentOnboarding />} />
             <Route path="/campus" element={<CampusApp />} />
             <Route path="/me" element={<StudentProfile />} />
+            <Route path="/u/:id" element={<UserProfile />} />
             <Route path="/app" element={<Navigate to="/campus" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
