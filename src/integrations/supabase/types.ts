@@ -143,6 +143,36 @@ export type Database = {
         }
         Relationships: []
       }
+      connection_requests: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          recipient_id: string
+          requester_id: string
+          status: Database["public"]["Enums"]["connection_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string
+          recipient_id: string
+          requester_id: string
+          status?: Database["public"]["Enums"]["connection_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          recipient_id?: string
+          requester_id?: string
+          status?: Database["public"]["Enums"]["connection_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
@@ -352,6 +382,38 @@ export type Database = {
           },
         ]
       }
+      post_comments: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          post_id: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          post_id: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_likes: {
         Row: {
           created_at: string
@@ -548,6 +610,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      are_connected: { Args: { a: string; b: string }; Returns: boolean }
       get_or_create_conversation: {
         Args: { other_user: string }
         Returns: string
@@ -567,6 +630,7 @@ export type Database = {
     }
     Enums: {
       branch_type: "CSE" | "ECE" | "ME" | "EE" | "CE" | "IT" | "Other"
+      connection_status: "pending" | "accepted" | "declined"
       mentorship_status: "pending" | "accepted" | "declined"
       placement_status: "Placed" | "Looking" | "Interning" | "N/A"
       post_type: "update" | "question" | "achievement" | "resource"
@@ -699,6 +763,7 @@ export const Constants = {
   public: {
     Enums: {
       branch_type: ["CSE", "ECE", "ME", "EE", "CE", "IT", "Other"],
+      connection_status: ["pending", "accepted", "declined"],
       mentorship_status: ["pending", "accepted", "declined"],
       placement_status: ["Placed", "Looking", "Interning", "N/A"],
       post_type: ["update", "question", "achievement", "resource"],
