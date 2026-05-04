@@ -13,6 +13,14 @@ export type StudentSession = {
   enrollment_id: string;
   phone_number: string;
   loggedInAt: string;
+  onboarded?: boolean;
+  bio?: string;
+  branch?: string;
+  year?: string;
+  interests?: string[];
+  skills?: string[];
+  open_to_mentor?: boolean;
+  looking_for_mentor_in?: string;
 };
 
 export const getStudentSession = (): StudentSession | null => {
@@ -37,7 +45,7 @@ const StudentRegistrationForm = () => {
   useEffect(() => {
     const session = getStudentSession();
     if (session) {
-      navigate("/app", { replace: true });
+      navigate(session.onboarded ? "/campus" : "/onboarding", { replace: true });
     }
   }, [navigate]);
 
@@ -135,7 +143,7 @@ const StudentRegistrationForm = () => {
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 
       toast.success(`Welcome, ${data.full_name.split(" ")[0]}!`);
-      navigate("/app", { replace: true });
+      navigate("/onboarding", { replace: true });
     } catch (err) {
       console.error("Registration error:", err);
       toast.error("Something went wrong. Please try again.");
