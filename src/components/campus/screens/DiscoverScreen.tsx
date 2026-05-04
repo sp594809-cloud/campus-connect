@@ -13,7 +13,7 @@ const branches = ["CSE","ECE","ME","EE","CE","IT","Other"];
 const years = ["1st","2nd","3rd","4th"];
 
 export const DiscoverScreen = ({ onMessage }: { onMessage: (id: string) => void }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { profiles, loading } = useProfiles(user?.id);
   const [showFilters, setShowFilters] = useState(false);
   const [branch, setBranch] = useState<string>("All");
@@ -33,6 +33,21 @@ export const DiscoverScreen = ({ onMessage }: { onMessage: (id: string) => void 
     });
   }, [profiles, branch, year, mentorOnly, placedOnly, activeInterests]);
 
+  const myInterests = profile?.interests ?? [];
+  const peopleYouMayKnow = useMemo(() => {
+    if (!myInterests.length) return [];
+    return profiles
+      .map((p) => ({ p, shared: p.interests.filter((i) => myInterests.includes(i)).length }))
+      .filter((x) => x.shared >= 3)
+      .sort((a, b) => b.shared - a.shared)
+      .slice(0, 10);
+  }, [profiles, myInterests]);
+
+  const myBranchPeers = useMemo(() => {
+    if (!profile?.branch) return [];
+    return profiles.filter((p) => p.branch === profile.branch).slice(0, 10);
+  }, [profiles, profile?.branch]);
+
   const toggle = (i: string) => setActiveInterests((p) => p.includes(i) ? p.filter((x) => x !== i) : [...p, i]);
 
   const startChat = async (otherId: string) => {
@@ -44,6 +59,37 @@ export const DiscoverScreen = ({ onMessage }: { onMessage: (id: string) => void 
   return (
     <div className="animate-fade-in-up">
       <Header title="Discover" subtitle={`${filtered.length} students match`} />
+
+      {!loading && peopleYouMayKnow.length > 0 && (
+        <section className="px-5 mt-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">People you may know</p>
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+            {peopleYouMayKnow.map(({ p, shared }) => (
+              <button key={p.id} onClick={() => startChat(p.id)} className="min-w-[140px] rounded-2xl bg-card border border-border/60 shadow-soft p-3 text-left hover:shadow-elevated transition-smooth">
+                <img src={avatarFor(p)} alt={p.name} loading="lazy" className="h-14 w-14 rounded-2xl object-cover" />
+                <p className="font-bold text-sm mt-2 truncate">{p.name}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{p.branch} · {p.year}</p>
+                <p className="text-[10px] font-semibold text-accent mt-1">{shared} shared interests</p>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {!loading && myBranchPeers.length > 0 && (
+        <section className="px-5 mt-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">My branch · {profile?.branch}</p>
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+            {myBranchPeers.map((p) => (
+              <button key={p.id} onClick={() => startChat(p.id)} className="min-w-[120px] rounded-2xl bg-gradient-card border border-border/60 shadow-soft p-3 text-left hover:shadow-elevated transition-smooth">
+                <img src={avatarFor(p)} alt={p.name} loading="lazy" className="h-12 w-12 rounded-full object-cover" />
+                <p className="font-bold text-sm mt-2 truncate">{p.name.split(" ")[0]}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{p.year} year</p>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="px-5 mt-3 flex items-center gap-2">
         <button
