@@ -6,8 +6,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Auth from "./pages/Auth.tsx";
-import Dashboard from "./pages/Dashboard.tsx";
 import CampusApp from "./pages/CampusApp.tsx";
+import StudentOnboarding from "./pages/StudentOnboarding.tsx";
+import StudentProfile from "./pages/StudentProfile.tsx";
+import { Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
@@ -22,8 +24,10 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/app" element={<Dashboard />} />
+            <Route path="/onboarding" element={<StudentOnboarding />} />
             <Route path="/campus" element={<CampusApp />} />
+            <Route path="/me" element={<StudentProfile />} />
+            <Route path="/app" element={<Navigate to="/campus" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
