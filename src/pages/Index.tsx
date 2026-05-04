@@ -32,7 +32,7 @@ export const getStudentSession = (): StudentSession | null => {
 };
 
 type Mode = "register" | "login";
-type Step = "phone" | "confirm";
+type Step = "phone" | "otp";
 
 const StudentRegistrationForm = () => {
   const navigate = useNavigate();
@@ -43,6 +43,10 @@ const StudentRegistrationForm = () => {
   const [enrollmentId, setEnrollmentId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [generatedEmail, setGeneratedEmail] = useState("");
+  const [sentOtp, setSentOtp] = useState("");
+  const [otpInput, setOtpInput] = useState("");
+  const [resendIn, setResendIn] = useState(0);
 
   useEffect(() => {
     const session = getStudentSession();
@@ -50,6 +54,21 @@ const StudentRegistrationForm = () => {
       navigate(session.onboarded ? "/campus" : "/onboarding", { replace: true });
     }
   }, [navigate]);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setInterval(() => setResendIn((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendIn]);
+
+  const sendOtpToEmail = (email: string) => {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setSentOtp(code);
+    setResendIn(30);
+    // Mock email send — replace with real email service later.
+    console.log(`[MOCK EMAIL OTP] To: ${email} | Code: ${code}`);
+    toast.success(`Verification code sent to ${email}`);
+  };
 
   const lookupStudent = async () => {
     setError("");
@@ -84,11 +103,20 @@ const StudentRegistrationForm = () => {
 
       setFullName(student.full_name);
       setEnrollmentId(student.enrollment_id);
-      setStep("confirm");
+      const email = `${student.enrollment_id}@mail.ljku.edu.in`;
+      setGeneratedEmail(email);
+      setOtpInput("");
+      sendOtpToEmail(email);
+      setStep("otp");
     } finally { setIsLoading(false); }
   };
 
   const completeLogin = async () => {
+    setError("");
+    if (otpInput.length !== 6 || otpInput !== sentOtp) {
+      const m = "Invalid verification code. Please try again.";
+      setError(m); toast.error(m); return;
+    }
     setIsLoading(true);
     try {
       const { data: auth } = await supabase.auth.getUser();
@@ -139,6 +167,7 @@ const StudentRegistrationForm = () => {
 
   const switchMode = (m: Mode) => {
     setMode(m); setStep("phone"); setError(""); setFullName(""); setEnrollmentId("");
+    setGeneratedEmail(""); setSentOtp(""); setOtpInput("");
   };
 
   return (
@@ -148,8 +177,8 @@ const StudentRegistrationForm = () => {
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
             <h1 className="text-2xl font-bold text-white">{mode === "register" ? "Student Registration" : "Welcome back"}</h1>
             <p className="text-indigo-100 text-sm mt-1">
-              {step === "phone" && "Enter your phone number to get started"}
-              {step === "confirm" && "Confirm your details"}
+              {step === "phone" && "Step 1 of 2 — Verify your phone number"}
+              {step === "otp" && "Step 2 of 2 — Verify your college email"}
             </p>
           </div>
 
@@ -185,28 +214,62 @@ const StudentRegistrationForm = () => {
               </div>
             )}
 
-            {step === "confirm" && (
+            {step === "otp" && (
               <div className="space-y-4">
                 <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-green-700 font-medium">Found in college records!</p>
+                  <p className="text-sm text-green-700 font-medium">
+                    Sending verification code to <span className="font-semibold">{generatedEmail}</span>
+                  </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name (locked)</label>
                   <div className="relative">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input value={fullName} readOnly className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium" />
+                    <input value={fullName} readOnly disabled className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium cursor-not-allowed" />
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">Your name is fixed from official college records and cannot be edited.</p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Enrollment ID</label>
                   <div className="relative">
                     <Hash className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input value={enrollmentId} readOnly className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium" />
+                    <input value={enrollmentId} readOnly disabled className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium cursor-not-allowed" />
                   </div>
                 </div>
-                <button onClick={completeLogin} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md">
-                  {mode === "register" ? "Complete Registration" : "Log in"}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">6-Digit Verification Code</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={otpInput}
+                    onChange={(e) => { setOtpInput(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
+                    placeholder="••••••"
+                    maxLength={6}
+                    className={`w-full px-4 py-3 border-2 rounded-xl tracking-[0.5em] text-center text-lg font-bold focus:outline-none focus:ring-2 transition-all ${error ? "border-red-300 focus:border-red-500 focus:ring-red-200" : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-200"}`}
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <button
+                      type="button"
+                      onClick={() => sendOtpToEmail(generatedEmail)}
+                      disabled={resendIn > 0}
+                      className="text-xs font-semibold text-indigo-600 disabled:text-gray-400"
+                    >
+                      {resendIn > 0 ? `Resend in ${resendIn}s` : "Resend code"}
+                    </button>
+                    <button type="button" onClick={() => setStep("phone")} className="text-xs font-semibold text-gray-500 hover:text-gray-700">
+                      Change phone
+                    </button>
+                  </div>
+                </div>
+                {error && (
+                  <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <XCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-700 font-medium">{error}</p>
+                  </div>
+                )}
+                <button onClick={completeLogin} disabled={isLoading || otpInput.length !== 6} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                  {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Verifying…</> : (mode === "register" ? "Complete Registration" : "Log in")}
                 </button>
               </div>
             )}
