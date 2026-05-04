@@ -1,10 +1,9 @@
 // StudentRegistrationForm.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, CheckCircle2, XCircle, User, Phone, Hash } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Hash, Loader2, Phone, ShieldCheck, User, XCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
 
 const SESSION_KEY = "campus_student_session";
 
@@ -32,16 +31,22 @@ export const getStudentSession = (): StudentSession | null => {
   }
 };
 
+type Mode = "register" | "login";
+type Step = "phone" | "otp" | "confirm";
+
 const StudentRegistrationForm = () => {
   const navigate = useNavigate();
+  const [mode, setMode] = useState<Mode>("register");
+  const [step, setStep] = useState<Step>("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
   const [fullName, setFullName] = useState("");
   const [enrollmentId, setEnrollmentId] = useState("");
-  const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [maskedTo, setMaskedTo] = useState("");
+  const [resendIn, setResendIn] = useState(0);
 
-  // Persistence: if already logged in, skip registration
   useEffect(() => {
     const session = getStudentSession();
     if (session) {
@@ -49,275 +54,169 @@ const StudentRegistrationForm = () => {
     }
   }, [navigate]);
 
-  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ""); // Only allow digits
-    setPhoneNumber(value);
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
 
-    // Reset verification state when user modifies phone number
-    if (isVerified) {
-      setIsVerified(false);
-      setFullName("");
-      setEnrollmentId("");
-      setError("");
-    }
-  };
-
-  const verifyPhoneNumber = async () => {
-    // Validate phone number format
-    if (phoneNumber.length < 10) {
-      setError("Please enter a valid 10-digit phone number");
-      return;
-    }
-
-    setIsLoading(true);
+  const sendOtp = async () => {
     setError("");
-
-    try {
-      // Query Supabase for the phone number
-      const { data, error: queryError } = await supabase
-        .from("student1")
-        .select("full_name, enrollment_id, phone_number")
-        .eq("phone_number", phoneNumber)
-        .maybeSingle(); // Use maybeSingle() to handle 0 or 1 results
-
-      if (queryError) {
-        console.error("Supabase query error:", queryError);
-        setError("Database error. Please try again.");
-        toast.error("Failed to verify phone number");
-        return;
-      }
-
-      if (!data) {
-        // Phone number not found
-        setError("Number not recognized by college records");
-        setIsVerified(false);
-        setFullName("");
-        setEnrollmentId("");
-        toast.error("Student not found");
-      } else {
-        // Phone number found - auto-fill the form
-        setFullName(data.full_name);
-        setEnrollmentId(data.enrollment_id);
-        setIsVerified(true);
-        setError("");
-        toast.success("Student verified successfully!");
-      }
-    } catch (err) {
-      console.error("Unexpected error:", err);
-      setError("An unexpected error occurred. Please try again.");
-      toast.error("Verification failed");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!isVerified) {
-      toast.error("Please verify your phone number first");
-      return;
-    }
-
+    if (phoneNumber.length < 10) { setError("Enter a valid 10-digit phone number"); return; }
     setIsLoading(true);
     try {
-      // Re-confirm against student1 to make sure the record still exists
-      const { data, error: queryError } = await supabase
-        .from("student1")
-        .select("full_name, enrollment_id, phone_number")
-        .eq("phone_number", phoneNumber)
-        .eq("enrollment_id", enrollmentId)
-        .maybeSingle();
-
-      if (queryError || !data) {
-        toast.error("We couldn't confirm your record. Please verify again.");
-        return;
+      const { data, error } = await supabase.functions.invoke("send-otp", { body: { phone_number: phoneNumber, mode } });
+      if (error || (data as any)?.error) {
+        const msg = (data as any)?.error || error?.message || "Failed to send OTP";
+        setError(msg); toast.error(msg); return;
       }
-
-      const session: StudentSession = {
-        full_name: data.full_name,
-        enrollment_id: data.enrollment_id,
-        phone_number: data.phone_number,
-        loggedInAt: new Date().toISOString(),
-      };
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-
-      toast.success(`Welcome, ${data.full_name.split(" ")[0]}!`);
-      navigate("/onboarding", { replace: true });
-    } catch (err) {
-      console.error("Registration error:", err);
-      toast.error("Something went wrong. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
+      setMaskedTo((data as any)?.masked ?? "");
+      setStep("otp");
+      setResendIn(30);
+      toast.success("OTP sent!");
+    } finally { setIsLoading(false); }
   };
 
-  const handleReset = () => {
-    setPhoneNumber("");
-    setFullName("");
-    setEnrollmentId("");
-    setIsVerified(false);
+  const verifyOtp = async () => {
     setError("");
+    if (otp.length !== 6) { setError("Enter the 6-digit code"); return; }
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-otp", { body: { phone_number: phoneNumber, code: otp, mode } });
+      if (error || (data as any)?.error) {
+        const msg = (data as any)?.error || error?.message || "Verification failed";
+        setError(msg); toast.error(msg); return;
+      }
+      const student = (data as any).student;
+      setFullName(student.full_name);
+      setEnrollmentId(student.enrollment_id);
+      setStep("confirm");
+      toast.success("Verified!");
+    } finally { setIsLoading(false); }
+  };
+
+  const completeLogin = () => {
+    const session: StudentSession = {
+      full_name: fullName,
+      enrollment_id: enrollmentId,
+      phone_number: phoneNumber,
+      loggedInAt: new Date().toISOString(),
+      onboarded: mode === "login", // login → already onboarded; register → go through onboarding
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    toast.success(`Welcome, ${fullName.split(" ")[0]}!`);
+    navigate(mode === "login" ? "/campus" : "/onboarding", { replace: true });
+  };
+
+  const switchMode = (m: Mode) => {
+    setMode(m); setStep("phone"); setOtp(""); setError(""); setFullName(""); setEnrollmentId("");
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
       <div className="w-full max-w-md">
-        {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-          {/* Header */}
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
-            <h1 className="text-2xl font-bold text-white">Student Registration</h1>
-            <p className="text-indigo-100 text-sm mt-1">Enter your phone number to get started</p>
+            <h1 className="text-2xl font-bold text-white">{mode === "register" ? "Student Registration" : "Welcome back"}</h1>
+            <p className="text-indigo-100 text-sm mt-1">
+              {step === "phone" && "Enter your phone number to get started"}
+              {step === "otp" && `We sent a 6-digit code to ${maskedTo}`}
+              {step === "confirm" && "Confirm your details"}
+            </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-8 space-y-6">
-            {/* Phone Number Input */}
-            <div>
-              <label htmlFor="phone" className="block text-sm font-semibold text-gray-700 mb-2">
-                Phone Number
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Phone className="h-5 w-5 text-gray-400" />
+          <div className="p-8 space-y-5">
+            <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl text-sm font-semibold">
+              <button onClick={() => switchMode("register")} className={`py-2 rounded-lg transition-all ${mode === "register" ? "bg-white shadow text-indigo-700" : "text-gray-500"}`}>Register</button>
+              <button onClick={() => switchMode("login")} className={`py-2 rounded-lg transition-all ${mode === "login" ? "bg-white shadow text-indigo-700" : "text-gray-500"}`}>Log in</button>
+            </div>
+
+            {step === "phone" && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => { setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10)); setError(""); }}
+                    placeholder="10-digit number"
+                    maxLength={10}
+                    className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 transition-all ${error ? "border-red-300 focus:border-red-500 focus:ring-red-200" : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-200"}`}
+                  />
                 </div>
-                <input
-                  id="phone"
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={handlePhoneNumberChange}
-                  placeholder="Enter 10-digit phone number"
-                  maxLength={10}
-                  className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 transition-all ${
-                    error
-                      ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-                      : isVerified
-                        ? "border-green-300 focus:border-green-500 focus:ring-green-200 bg-green-50"
-                        : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-200"
-                  }`}
-                  disabled={isVerified}
-                />
-                {isVerified && (
-                  <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                {error && (
+                  <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <XCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-700 font-medium">{error}</p>
                   </div>
                 )}
-              </div>
-
-              {/* Verify Button */}
-              {!isVerified && (
-                <button
-                  type="button"
-                  onClick={verifyPhoneNumber}
-                  disabled={isLoading || phoneNumber.length < 10}
-                  className="mt-3 w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      Verifying...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-5 w-5" />
-                      Verify Phone Number
-                    </>
-                  )}
+                <button onClick={sendOtp} disabled={isLoading || phoneNumber.length < 10} className="mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md">
+                  {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Sending…</> : <>Send OTP</>}
                 </button>
-              )}
+              </div>
+            )}
 
-              {/* Error Message */}
-              {error && (
-                <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <XCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-700 font-medium">{error}</p>
+            {step === "otp" && (
+              <div>
+                <button onClick={() => { setStep("phone"); setOtp(""); setError(""); }} className="flex items-center gap-1 text-xs font-semibold text-indigo-600 mb-3"><ArrowLeft className="h-3.5 w-3.5" /> Change number</button>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">6-digit code</label>
+                <div className="relative">
+                  <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    value={otp}
+                    onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
+                    placeholder="••••••"
+                    maxLength={6}
+                    className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 transition-all tracking-[0.5em] text-center text-lg font-bold ${error ? "border-red-300 focus:border-red-500 focus:ring-red-200" : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-200"}`}
+                  />
                 </div>
-              )}
+                {error && (
+                  <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <XCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-700 font-medium">{error}</p>
+                  </div>
+                )}
+                <button onClick={verifyOtp} disabled={isLoading || otp.length !== 6} className="mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md">
+                  {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Verifying…</> : "Verify"}
+                </button>
+                <button onClick={sendOtp} disabled={resendIn > 0 || isLoading} className="mt-3 w-full text-sm font-semibold text-indigo-600 disabled:text-gray-400">
+                  {resendIn > 0 ? `Resend code in ${resendIn}s` : "Resend code"}
+                </button>
+              </div>
+            )}
 
-              {/* Success Message */}
-              {isVerified && (
-                <div className="mt-3 flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            {step === "confirm" && (
+              <div className="space-y-4">
+                <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-green-700 font-medium">Phone number verified successfully!</p>
+                  <p className="text-sm text-green-700 font-medium">Phone verified successfully!</p>
                 </div>
-              )}
-            </div>
-
-            {/* Full Name Input */}
-            <div>
-              <label htmlFor="fullName" className="block text-sm font-semibold text-gray-700 mb-2">
-                Full Name
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input value={fullName} readOnly className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium" />
+                  </div>
                 </div>
-                <input
-                  id="fullName"
-                  type="text"
-                  value={fullName}
-                  readOnly
-                  placeholder="Will auto-fill after verification"
-                  className={`w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-700 cursor-not-allowed ${
-                    isVerified ? "font-medium" : ""
-                  }`}
-                />
-              </div>
-            </div>
-
-            {/* Enrollment ID Input */}
-            <div>
-              <label htmlFor="enrollmentId" className="block text-sm font-semibold text-gray-700 mb-2">
-                Enrollment ID
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Hash className="h-5 w-5 text-gray-400" />
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Enrollment ID</label>
+                  <div className="relative">
+                    <Hash className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input value={enrollmentId} readOnly className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium" />
+                  </div>
                 </div>
-                <input
-                  id="enrollmentId"
-                  type="text"
-                  value={enrollmentId}
-                  readOnly
-                  placeholder="Will auto-fill after verification"
-                  className={`w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-700 cursor-not-allowed ${
-                    isVerified ? "font-medium" : ""
-                  }`}
-                />
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-4">
-              {isVerified && (
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-all duration-200"
-                >
-                  Reset
+                <button onClick={completeLogin} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md">
+                  {mode === "register" ? "Complete Registration" : "Log in"}
                 </button>
-              )}
-              <button
-                type="submit"
-                disabled={!isVerified}
-                className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                Complete Registration
-              </button>
-            </div>
-          </form>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Helper Text */}
         <p className="text-center text-sm text-gray-500 mt-4">Need help? Contact your college administration</p>
-        <p className="text-center text-sm text-gray-600 mt-2">
-          Already have an account?{" "}
-          <Link to="/auth" className="text-indigo-600 font-semibold hover:underline">
-            Sign in
-          </Link>
-        </p>
       </div>
     </div>
   );
