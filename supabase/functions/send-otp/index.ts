@@ -17,17 +17,24 @@ function normalizePhone(raw: string) {
   return "+" + digits;
 }
 
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const { phone_number, mode } = await req.json();
     if (!phone_number || typeof phone_number !== "string") {
-      return new Response(JSON.stringify({ error: "phone_number required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "phone_number required" }, 400);
     }
     const phoneDigits = phone_number.replace(/\D/g, "");
     if (phoneDigits.length < 10) {
-      return new Response(JSON.stringify({ error: "Invalid phone number" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "Invalid phone number" }, 400);
     }
 
     const supabase = createClient(
@@ -43,7 +50,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (sErr) throw sErr;
     if (!student) {
-      return new Response(JSON.stringify({ error: "This number is not in our college records." }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "This number is not in our college records." }, 404);
     }
 
     // Check registration state
@@ -54,17 +61,17 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (mode === "register" && reg) {
-      return new Response(JSON.stringify({ error: "This number is already registered. Please log in instead." }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "This number is already registered. Please log in instead." }, 409);
     }
     if (mode === "login" && !reg) {
-      return new Response(JSON.stringify({ error: "No account found for this number. Please register first." }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "No account found for this number. Please register first." }, 404);
     }
 
     // Rate limit: max 3 OTPs per phone per 10 minutes
     const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
     const { count } = await supabase.from("otp_codes").select("id", { count: "exact", head: true }).eq("phone_number", phoneDigits).gte("created_at", since);
     if ((count ?? 0) >= 3) {
-      return new Response(JSON.stringify({ error: "Too many requests. Please wait a few minutes." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "Too many requests. Please wait a few minutes." }, 429);
     }
 
     // Generate OTP
@@ -80,7 +87,8 @@ Deno.serve(async (req) => {
     const token = Deno.env.get("TWILIO_AUTH_TOKEN");
     const from = Deno.env.get("TWILIO_FROM_NUMBER");
     if (!sid || !token || !from) {
-      return new Response(JSON.stringify({ error: "SMS provider not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      await supabase.from("otp_codes").delete().eq("phone_number", phoneDigits).eq("code_hash", code_hash);
+      return jsonResponse({ ok: false, error: "SMS provider is not configured yet. Please update the Twilio settings." });
     }
     const to = normalizePhone(phoneDigits);
     const body = `Your Campus Connect OTP is ${code}. Valid for 5 minutes.`;
@@ -95,12 +103,27 @@ Deno.serve(async (req) => {
     if (!tw.ok) {
       const errText = await tw.text();
       console.error("Twilio error:", tw.status, errText);
-      return new Response(JSON.stringify({ error: "Failed to send SMS. Please try again." }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      await supabase.from("otp_codes").delete().eq("phone_number", phoneDigits).eq("code_hash", code_hash);
+
+      let message = "SMS delivery is temporarily unavailable. Please try again later.";
+      try {
+        const twilioError = JSON.parse(errText);
+        if (tw.status === 401 || twilioError?.code === 20003) {
+          message = "SMS provider authentication failed. Please update the Twilio Account SID and Auth Token.";
+        } else if (tw.status === 400 && twilioError?.message) {
+          message = `SMS could not be sent: ${twilioError.message}`;
+        }
+      } catch {
+        // Keep the safe generic message if Twilio returns non-JSON text.
+      }
+
+      return jsonResponse({ ok: false, error: message, provider_status: tw.status });
     }
 
-    return new Response(JSON.stringify({ ok: true, masked: to.slice(0, 3) + "******" + to.slice(-2) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return jsonResponse({ ok: true, masked: to.slice(0, 3) + "******" + to.slice(-2) });
   } catch (err) {
     console.error("send-otp error", err);
-    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return jsonResponse({ error: (err as Error).message }, 500);
   }
 });
