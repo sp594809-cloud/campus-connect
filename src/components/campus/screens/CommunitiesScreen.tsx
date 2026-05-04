@@ -51,6 +51,7 @@ export const CommunitiesScreen = () => {
       interest: form.interest,
       emoji: form.emoji || "✨",
       color: form.color,
+      created_by: user.id,
     }).select("id").single();
     if (!error && data) {
       await supabase.from("community_members").insert({ community_id: data.id, user_id: user.id });
@@ -125,8 +126,8 @@ export const CommunitiesScreen = () => {
       </div>
 
       {showCreate && (
-        <div className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-fade-in-up" onClick={() => setShowCreate(false)}>
-          <div className="bg-card rounded-3xl p-5 w-full max-w-md shadow-elevated animate-scale-in space-y-3" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 overflow-y-auto animate-fade-in-up" onClick={() => setShowCreate(false)}>
+          <div className="bg-card rounded-3xl p-5 w-full max-w-md shadow-elevated animate-scale-in space-y-3 my-auto max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-bold">Create community</h3>
               <button onClick={() => setShowCreate(false)} aria-label="Close" className="h-8 w-8 rounded-full hover:bg-secondary flex items-center justify-center"><X className="h-4 w-4" /></button>
