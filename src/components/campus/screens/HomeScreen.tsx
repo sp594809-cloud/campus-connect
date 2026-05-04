@@ -290,7 +290,7 @@ const CommentsSheet = ({ postId, onClose }: { postId: string; onClose: () => voi
 
   return (
     <div className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm flex items-end justify-center animate-fade-in-up" onClick={onClose}>
-      <div className="bg-card rounded-t-3xl w-full max-w-md max-h-[80vh] flex flex-col animate-slide-up" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-card rounded-t-3xl w-full max-w-md max-h-[80vh] flex flex-col animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h3 className="font-bold">Comments</h3>
           <button onClick={onClose} aria-label="Close" className="h-8 w-8 rounded-full hover:bg-secondary flex items-center justify-center"><X className="h-4 w-4" /></button>
