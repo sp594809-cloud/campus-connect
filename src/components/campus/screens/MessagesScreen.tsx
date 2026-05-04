@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, Paperclip, FileText, Check, CheckCheck, X } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,6 +7,8 @@ import { avatarFor, type PublicProfile } from "@/hooks/useProfiles";
 import { iceBreakers } from "@/data/constants";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { uploadAttachment, detectKind } from "@/lib/uploads";
+import { toast } from "sonner";
 
 interface ConvRow {
   id: string;
@@ -22,9 +24,11 @@ interface MessageRow {
   id: string;
   conversation_id: string;
   sender_id: string;
-  content: string;
+  content: string | null;
   created_at: string;
   read: boolean;
+  attachment_url?: string | null;
+  attachment_type?: string | null;
 }
 
 export const MessagesScreen = ({ openWith, onClearOpen }: { openWith: string | null; onClearOpen: () => void }) => {
@@ -51,13 +55,16 @@ export const MessagesScreen = ({ openWith, onClearOpen }: { openWith: string | n
 
     const { data: lastMsgs } = await supabase
       .from("messages")
-      .select("conversation_id, content, sender_id, read, created_at")
+      .select("conversation_id, content, sender_id, read, created_at, attachment_type")
       .in("conversation_id", convs.map((c) => c.id))
       .order("created_at", { ascending: false });
     const lastByConv = new Map<string, { content: string; sender_id: string }>();
     const unreadByConv = new Map<string, number>();
     (lastMsgs ?? []).forEach((m) => {
-      if (!lastByConv.has(m.conversation_id)) lastByConv.set(m.conversation_id, { content: m.content, sender_id: m.sender_id });
+      if (!lastByConv.has(m.conversation_id)) {
+        const preview = m.attachment_type === "image" ? "📷 Photo" : m.attachment_type === "pdf" ? "📄 Document" : (m.content ?? "");
+        lastByConv.set(m.conversation_id, { content: preview, sender_id: m.sender_id });
+      }
       if (!m.read && m.sender_id !== user.id) unreadByConv.set(m.conversation_id, (unreadByConv.get(m.conversation_id) ?? 0) + 1);
     });
 
@@ -142,6 +149,8 @@ const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProf
   const { user } = useAuth();
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [draft, setDraft] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const load = async () => {
@@ -175,6 +184,24 @@ const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProf
     await supabase.from("messages").insert({ conversation_id: convId, sender_id: user.id, content: text.trim().slice(0, 1000) });
   };
 
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !user) return;
+    if (!detectKind(file)) { toast.error("Only images and PDFs allowed"); return; }
+    setUploading(true);
+    try {
+      const result = await uploadAttachment(file, "chat-media", user.id);
+      if (!result) return;
+      await supabase.from("messages").insert({
+        conversation_id: convId, sender_id: user.id,
+        content: null, attachment_url: result.url, attachment_type: result.type,
+      });
+    } catch (err: any) {
+      toast.error(err.message ?? "Upload failed");
+    } finally { setUploading(false); }
+  };
+
   const sharedInterest = other.interests[0] ?? "tech";
 
   return (
@@ -188,7 +215,7 @@ const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProf
         </div>
       </header>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2 pb-32">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-1.5 pb-36 bg-[hsl(var(--muted))]/30">
         {messages.length === 0 && (
           <div className="text-center py-8">
             <div className="inline-flex h-16 w-16 rounded-full bg-gradient-hero items-center justify-center text-primary-foreground mb-3 shadow-glow animate-pulse-glow">
@@ -212,21 +239,42 @@ const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProf
           const fromMe = m.sender_id === user?.id;
           return (
             <div key={m.id} className={cn("flex", fromMe ? "justify-end" : "justify-start")}>
-              <div className={cn("max-w-[78%] px-4 py-2.5 rounded-2xl text-sm shadow-soft animate-scale-in",
-                fromMe ? "bg-gradient-hero text-primary-foreground rounded-br-md" : "bg-card border border-border rounded-bl-md")}>
-                {m.content}
-                <div className={cn("text-[10px] mt-1 opacity-70", fromMe ? "text-right" : "")}>{formatDistanceToNow(new Date(m.created_at), { addSuffix: true })}</div>
+              <div className={cn("max-w-[78%] px-2.5 py-1.5 rounded-2xl text-sm shadow-soft animate-scale-in",
+                fromMe
+                  ? "bg-[#dcf8c6] text-foreground rounded-br-sm"
+                  : "bg-white text-foreground rounded-bl-sm border border-border/50")}>
+                {m.attachment_url && m.attachment_type === "image" && (
+                  <a href={m.attachment_url} target="_blank" rel="noreferrer">
+                    <img src={m.attachment_url} alt="attachment" className="rounded-lg max-h-60 object-cover mb-1" />
+                  </a>
+                )}
+                {m.attachment_url && m.attachment_type === "pdf" && (
+                  <a href={m.attachment_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-black/5 rounded-lg p-2 mb-1">
+                    <FileText className="h-6 w-6 text-red-600" />
+                    <span className="text-xs font-medium underline">Open PDF</span>
+                  </a>
+                )}
+                {m.content && <div className="px-1 whitespace-pre-wrap break-words">{m.content}</div>}
+                <div className={cn("text-[10px] mt-0.5 flex items-center gap-1 opacity-70", fromMe ? "justify-end" : "")}>
+                  <span>{formatDistanceToNow(new Date(m.created_at), { addSuffix: false })}</span>
+                  {fromMe && (m.read ? <CheckCheck className="h-3.5 w-3.5 text-blue-500" /> : <CheckCheck className="h-3.5 w-3.5" />)}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
 
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md p-3 bg-background/95 backdrop-blur-xl border-t border-border">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md p-3 pb-20 bg-background/95 backdrop-blur-xl border-t border-border">
         <div className="flex items-center gap-2">
+          <input ref={fileInputRef} type="file" accept="image/*,application/pdf" hidden onChange={handleFile} />
+          <button onClick={() => fileInputRef.current?.click()} disabled={uploading} aria-label="Attach" className="h-11 w-11 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 disabled:opacity-50">
+            <Paperclip className="h-5 w-5" />
+          </button>
           <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send(draft)} placeholder="Write a message…" maxLength={1000} className="flex-1 bg-secondary rounded-full px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
           <button onClick={() => send(draft)} aria-label="Send" className="h-11 w-11 rounded-full bg-gradient-hero text-primary-foreground flex items-center justify-center shadow-glow active:scale-95 transition-smooth"><Send className="h-4 w-4" /></button>
         </div>
+        {uploading && <p className="text-[11px] text-muted-foreground mt-1 text-center">Uploading…</p>}
       </div>
     </div>
   );
