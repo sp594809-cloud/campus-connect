@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       communities: {
         Row: {
+          admins_only: boolean
           color: string
           created_at: string
           created_by: string | null
@@ -26,6 +27,7 @@ export type Database = {
           name: string
         }
         Insert: {
+          admins_only?: boolean
           color?: string
           created_at?: string
           created_by?: string | null
@@ -36,6 +38,7 @@ export type Database = {
           name: string
         }
         Update: {
+          admins_only?: boolean
           color?: string
           created_at?: string
           created_by?: string | null
@@ -79,6 +82,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      community_messages: {
+        Row: {
+          attachment_type: string | null
+          attachment_url: string | null
+          community_id: string
+          content: string | null
+          created_at: string
+          id: string
+          sender_id: string
+        }
+        Insert: {
+          attachment_type?: string | null
+          attachment_url?: string | null
+          community_id: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          sender_id: string
+        }
+        Update: {
+          attachment_type?: string | null
+          attachment_url?: string | null
+          community_id?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          sender_id?: string
+        }
+        Relationships: []
       }
       conversations: {
         Row: {
@@ -243,7 +276,9 @@ export type Database = {
       }
       messages: {
         Row: {
-          content: string
+          attachment_type: string | null
+          attachment_url: string | null
+          content: string | null
           conversation_id: string
           created_at: string
           id: string
@@ -251,7 +286,9 @@ export type Database = {
           sender_id: string
         }
         Insert: {
-          content: string
+          attachment_type?: string | null
+          attachment_url?: string | null
+          content?: string | null
           conversation_id: string
           created_at?: string
           id?: string
@@ -259,7 +296,9 @@ export type Database = {
           sender_id: string
         }
         Update: {
-          content?: string
+          attachment_type?: string | null
+          attachment_url?: string | null
+          content?: string | null
           conversation_id?: string
           created_at?: string
           id?: string
@@ -318,6 +357,8 @@ export type Database = {
       }
       posts: {
         Row: {
+          attachment_type: string | null
+          attachment_url: string | null
           author_id: string
           content: string
           created_at: string
@@ -327,6 +368,8 @@ export type Database = {
           type: Database["public"]["Enums"]["post_type"]
         }
         Insert: {
+          attachment_type?: string | null
+          attachment_url?: string | null
           author_id: string
           content: string
           created_at?: string
@@ -336,6 +379,8 @@ export type Database = {
           type?: Database["public"]["Enums"]["post_type"]
         }
         Update: {
+          attachment_type?: string | null
+          attachment_url?: string | null
           author_id?: string
           content?: string
           created_at?: string
@@ -425,6 +470,14 @@ export type Database = {
       get_or_create_conversation: {
         Args: { other_user: string }
         Returns: string
+      }
+      is_community_admin: {
+        Args: { _cid: string; _uid: string }
+        Returns: boolean
+      }
+      is_community_member: {
+        Args: { _cid: string; _uid: string }
+        Returns: boolean
       }
       is_conversation_participant: {
         Args: { conv_id: string; uid: string }
