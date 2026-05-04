@@ -47,7 +47,6 @@ const StudentRegistrationForm = () => {
   const [defaultEmail, setDefaultEmail] = useState("");
   const [useCustomEmail, setUseCustomEmail] = useState(false);
   const [customEmail, setCustomEmail] = useState("");
-  const [sentOtp, setSentOtp] = useState("");
   const [otpInput, setOtpInput] = useState("");
   const [resendIn, setResendIn] = useState(0);
 
@@ -64,13 +63,19 @@ const StudentRegistrationForm = () => {
     return () => clearInterval(t);
   }, [resendIn]);
 
-  const sendOtpToEmail = (email: string) => {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setSentOtp(code);
+  const sendOtpToEmail = async (email: string) => {
+    const { data, error } = await supabase.functions.invoke("send-otp", {
+      body: { phone_number: phoneNumber, email, full_name: fullName },
+    });
+    if (error || (data as any)?.error) {
+      const msg = (data as any)?.error || error?.message || "Failed to send code";
+      toast.error(msg);
+      setError(msg);
+      return false;
+    }
     setResendIn(30);
-    // Mock email send — replace with real email service later.
-    console.log(`[MOCK EMAIL OTP] To: ${email} | Code: ${code}`);
     toast.success(`Verification code sent to ${email}`);
+    return true;
   };
 
   const lookupStudent = async () => {
@@ -116,7 +121,7 @@ const StudentRegistrationForm = () => {
     } finally { setIsLoading(false); }
   };
 
-  const confirmEmailAndSend = () => {
+  const confirmEmailAndSend = async () => {
     setError("");
     const email = useCustomEmail ? customEmail.trim() : defaultEmail;
     const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -126,18 +131,27 @@ const StudentRegistrationForm = () => {
     }
     setGeneratedEmail(email);
     setOtpInput("");
-    sendOtpToEmail(email);
-    setStep("otp");
+    const ok = await sendOtpToEmail(email);
+    if (ok) setStep("otp");
   };
 
   const completeLogin = async () => {
     setError("");
-    if (otpInput.length !== 6 || otpInput !== sentOtp) {
-      const m = "Invalid verification code. Please try again.";
+    if (otpInput.length !== 6) {
+      const m = "Enter the 6-digit code.";
       setError(m); toast.error(m); return;
     }
     setIsLoading(true);
     try {
+      const { data: vData, error: vErr } = await supabase.functions.invoke("verify-otp", {
+        body: { phone_number: phoneNumber, code: otpInput },
+      });
+      if (vErr || (vData as any)?.error) {
+        const msg = (vData as any)?.error || vErr?.message || "Invalid verification code.";
+        setError(msg); toast.error(msg);
+        return;
+      }
+
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id;
       if (!uid) {
@@ -187,7 +201,7 @@ const StudentRegistrationForm = () => {
   const switchMode = (m: Mode) => {
     setMode(m); setStep("phone"); setError(""); setFullName(""); setEnrollmentId("");
     setGeneratedEmail(""); setDefaultEmail(""); setCustomEmail(""); setUseCustomEmail(false);
-    setSentOtp(""); setOtpInput("");
+    setOtpInput("");
   };
 
   return (
