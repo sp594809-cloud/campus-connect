@@ -32,20 +32,17 @@ export const getStudentSession = (): StudentSession | null => {
 };
 
 type Mode = "register" | "login";
-type Step = "phone" | "otp" | "confirm";
+type Step = "phone" | "confirm";
 
 const StudentRegistrationForm = () => {
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("register");
   const [step, setStep] = useState<Step>("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [otp, setOtp] = useState("");
   const [fullName, setFullName] = useState("");
   const [enrollmentId, setEnrollmentId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [maskedTo, setMaskedTo] = useState("");
-  const [resendIn, setResendIn] = useState(0);
 
   useEffect(() => {
     const session = getStudentSession();
@@ -54,44 +51,40 @@ const StudentRegistrationForm = () => {
     }
   }, [navigate]);
 
-  useEffect(() => {
-    if (resendIn <= 0) return;
-    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [resendIn]);
-
-  const sendOtp = async () => {
+  const lookupStudent = async () => {
     setError("");
     if (phoneNumber.length < 10) { setError("Enter a valid 10-digit phone number"); return; }
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("send-otp", { body: { phone_number: phoneNumber, mode } });
-      if (error || (data as any)?.error) {
-        const msg = (data as any)?.error || error?.message || "Failed to send OTP";
+      const { data: student, error: sErr } = await supabase
+        .from("student1")
+        .select("full_name, enrollment_id, phone_number")
+        .eq("phone_number", phoneNumber)
+        .maybeSingle();
+      if (sErr) { setError(sErr.message); toast.error(sErr.message); return; }
+      if (!student) {
+        const msg = "This number is not in our college records.";
         setError(msg); toast.error(msg); return;
       }
-      setMaskedTo((data as any)?.masked ?? "");
-      setStep("otp");
-      setResendIn(30);
-      toast.success("OTP sent!");
-    } finally { setIsLoading(false); }
-  };
 
-  const verifyOtp = async () => {
-    setError("");
-    if (otp.length !== 6) { setError("Enter the 6-digit code"); return; }
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("verify-otp", { body: { phone_number: phoneNumber, code: otp, mode } });
-      if (error || (data as any)?.error) {
-        const msg = (data as any)?.error || error?.message || "Verification failed";
+      const { data: reg } = await supabase
+        .from("registered_phones")
+        .select("phone_number")
+        .eq("phone_number", phoneNumber)
+        .maybeSingle();
+
+      if (mode === "register" && reg) {
+        const msg = "This number is already registered. Please log in instead.";
         setError(msg); toast.error(msg); return;
       }
-      const student = (data as any).student;
+      if (mode === "login" && !reg) {
+        const msg = "No account found for this number. Please register first.";
+        setError(msg); toast.error(msg); return;
+      }
+
       setFullName(student.full_name);
       setEnrollmentId(student.enrollment_id);
       setStep("confirm");
-      toast.success("Verified!");
     } finally { setIsLoading(false); }
   };
 
@@ -109,7 +102,7 @@ const StudentRegistrationForm = () => {
   };
 
   const switchMode = (m: Mode) => {
-    setMode(m); setStep("phone"); setOtp(""); setError(""); setFullName(""); setEnrollmentId("");
+    setMode(m); setStep("phone"); setError(""); setFullName(""); setEnrollmentId("");
   };
 
   return (
@@ -120,7 +113,6 @@ const StudentRegistrationForm = () => {
             <h1 className="text-2xl font-bold text-white">{mode === "register" ? "Student Registration" : "Welcome back"}</h1>
             <p className="text-indigo-100 text-sm mt-1">
               {step === "phone" && "Enter your phone number to get started"}
-              {step === "otp" && `We sent a 6-digit code to ${maskedTo}`}
               {step === "confirm" && "Confirm your details"}
             </p>
           </div>
@@ -151,39 +143,8 @@ const StudentRegistrationForm = () => {
                     <p className="text-sm text-red-700 font-medium">{error}</p>
                   </div>
                 )}
-                <button onClick={sendOtp} disabled={isLoading || phoneNumber.length < 10} className="mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md">
-                  {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Sending…</> : <>Send OTP</>}
-                </button>
-              </div>
-            )}
-
-            {step === "otp" && (
-              <div>
-                <button onClick={() => { setStep("phone"); setOtp(""); setError(""); }} className="flex items-center gap-1 text-xs font-semibold text-indigo-600 mb-3"><ArrowLeft className="h-3.5 w-3.5" /> Change number</button>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">6-digit code</label>
-                <div className="relative">
-                  <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    value={otp}
-                    onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
-                    placeholder="••••••"
-                    maxLength={6}
-                    className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 transition-all tracking-[0.5em] text-center text-lg font-bold ${error ? "border-red-300 focus:border-red-500 focus:ring-red-200" : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-200"}`}
-                  />
-                </div>
-                {error && (
-                  <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <XCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-red-700 font-medium">{error}</p>
-                  </div>
-                )}
-                <button onClick={verifyOtp} disabled={isLoading || otp.length !== 6} className="mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md">
-                  {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Verifying…</> : "Verify"}
-                </button>
-                <button onClick={sendOtp} disabled={resendIn > 0 || isLoading} className="mt-3 w-full text-sm font-semibold text-indigo-600 disabled:text-gray-400">
-                  {resendIn > 0 ? `Resend code in ${resendIn}s` : "Resend code"}
+                <button onClick={lookupStudent} disabled={isLoading || phoneNumber.length < 10} className="mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md">
+                  {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Checking…</> : <>Continue</>}
                 </button>
               </div>
             )}
@@ -192,7 +153,7 @@ const StudentRegistrationForm = () => {
               <div className="space-y-4">
                 <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-green-700 font-medium">Phone verified successfully!</p>
+                  <p className="text-sm text-green-700 font-medium">Found in college records!</p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
