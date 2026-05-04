@@ -3,12 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, CheckCircle2, XCircle, User, Phone, Hash } from "lucide-react";
-
-interface StudentData {
-  full_name: string;
-  enrollment_id: number;
-  phone_number: number;
-}
+import { Link } from "react-router-dom";
 
 const StudentRegistrationForm = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -44,9 +39,9 @@ const StudentRegistrationForm = () => {
     try {
       // Query Supabase for the phone number
       const { data, error: queryError } = await supabase
-        .from("college_roster")
-        .select("full_name, enrollment_id, mobile_number")
-        .eq("mobile_number", phoneNumber)
+        .from("student1")
+        .select("full_name, enrollment_id, phone_number")
+        .eq("phone_number", phoneNumber)
         .maybeSingle(); // Use maybeSingle() to handle 0 or 1 results
 
       if (queryError) {
@@ -66,7 +61,7 @@ const StudentRegistrationForm = () => {
       } else {
         // Phone number found - auto-fill the form
         setFullName(data.full_name);
-        setEnrollmentId(data.enrollment_id.toString());
+        setEnrollmentId(data.enrollment_id);
         setIsVerified(true);
         setError("");
         toast.success("Student verified successfully!");
@@ -258,6 +253,12 @@ const StudentRegistrationForm = () => {
 
         {/* Helper Text */}
         <p className="text-center text-sm text-gray-500 mt-4">Need help? Contact your college administration</p>
+        <p className="text-center text-sm text-gray-600 mt-2">
+          Already have an account?{" "}
+          <Link to="/auth" className="text-indigo-600 font-semibold hover:underline">
+            Sign in
+          </Link>
+        </p>
       </div>
     </div>
   );

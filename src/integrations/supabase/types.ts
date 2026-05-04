@@ -492,6 +492,36 @@ export type Database = {
         }
         Relationships: []
       }
+      student1: {
+        Row: {
+          branch: string | null
+          created_at: string
+          current_year: number | null
+          enrollment_id: string
+          full_name: string
+          id: string
+          phone_number: string
+        }
+        Insert: {
+          branch?: string | null
+          created_at?: string
+          current_year?: number | null
+          enrollment_id: string
+          full_name: string
+          id?: string
+          phone_number: string
+        }
+        Update: {
+          branch?: string | null
+          created_at?: string
+          current_year?: number | null
+          enrollment_id?: string
+          full_name?: string
+          id?: string
+          phone_number?: string
+        }
+        Relationships: []
+      }
       verified_students: {
         Row: {
           created_at: string | null
