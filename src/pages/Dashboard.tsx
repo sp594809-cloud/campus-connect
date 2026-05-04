@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { LogOut, GraduationCap, Phone, Hash } from "lucide-react";
+import { LogOut, Phone, Hash, Sparkles, ArrowRight } from "lucide-react";
 import { getStudentSession } from "./Index";
 
 const Dashboard = () => {
@@ -32,6 +32,12 @@ const Dashboard = () => {
             <p className="text-indigo-100 text-sm mt-1">{session.full_name}</p>
           </div>
           <div className="p-6 space-y-4">
+            <button
+              onClick={() => navigate("/campus")}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-95 text-white font-semibold py-3 rounded-xl shadow-lg"
+            >
+              <Sparkles className="h-4 w-4" /> Enter Campus Connect <ArrowRight className="h-4 w-4" />
+            </button>
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
               <Hash className="h-5 w-5 text-indigo-600" />
               <div>
