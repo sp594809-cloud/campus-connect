@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, MapPin, Users } from "lucide-react";
+import { CalendarDays, MapPin, Users, Plus, X } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,6 +17,9 @@ export const EventsScreen = () => {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [rsvped, setRsvped] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ title: "", description: "", location: "", organizer: "", emoji: "🎉", starts_at: "" });
+  const [submitting, setSubmitting] = useState(false);
 
   const load = async () => {
     const { data: evs } = await supabase.from("events").select("*").gte("starts_at", new Date(Date.now() - 86400000).toISOString()).order("starts_at");
@@ -34,6 +37,30 @@ export const EventsScreen = () => {
 
   useEffect(() => { load(); }, [user?.id]);
 
+  const createEvent = async () => {
+    if (!user) return;
+    if (!form.title.trim() || !form.starts_at) {
+      toast.error("Title and date are required");
+      return;
+    }
+    setSubmitting(true);
+    const { error } = await supabase.from("events").insert({
+      title: form.title.trim(),
+      description: form.description.trim(),
+      location: form.location.trim(),
+      organizer: form.organizer.trim() || "Campus",
+      emoji: form.emoji || "🎉",
+      starts_at: new Date(form.starts_at).toISOString(),
+      created_by: user.id,
+    });
+    setSubmitting(false);
+    if (error) return toast.error(error.message);
+    toast.success("Event created! 🎉");
+    setShowCreate(false);
+    setForm({ title: "", description: "", location: "", organizer: "", emoji: "🎉", starts_at: "" });
+    load();
+  };
+
   const toggleRsvp = async (e: EventRow) => {
     if (!user) return;
     const going = rsvped[e.id];
@@ -50,6 +77,11 @@ export const EventsScreen = () => {
   return (
     <div className="animate-fade-in-up">
       <Header title="Events" subtitle="Hackathons, workshops, club nights" />
+      <div className="px-5 mt-3 flex justify-end">
+        <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-1.5 bg-gradient-hero text-primary-foreground px-4 py-2 rounded-full text-sm font-semibold shadow-soft hover:shadow-glow transition-smooth">
+          <Plus className="h-4 w-4" /> New event
+        </button>
+      </div>
       {loading && <p className="text-center text-sm text-muted-foreground py-8">Loading…</p>}
       <div className="px-5 mt-3 space-y-3">
         {events.map((e, i) => (
@@ -80,6 +112,28 @@ export const EventsScreen = () => {
           </div>
         )}
       </div>
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-fade-in-up" onClick={() => setShowCreate(false)}>
+          <div className="bg-card rounded-3xl p-5 w-full max-w-md shadow-elevated animate-scale-in space-y-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold">Create event</h3>
+              <button onClick={() => setShowCreate(false)} aria-label="Close" className="h-8 w-8 rounded-full hover:bg-secondary flex items-center justify-center"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="flex gap-2">
+              <input value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value.slice(0, 2) })} placeholder="🎉" className="w-14 px-3 py-2 rounded-2xl bg-secondary text-center text-lg focus:outline-none" />
+              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Event title *" className="flex-1 px-3 py-2 rounded-2xl bg-secondary text-sm focus:outline-none" />
+            </div>
+            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Description" className="w-full px-3 py-2 rounded-2xl bg-secondary text-sm focus:outline-none resize-none" />
+            <input type="datetime-local" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} className="w-full px-3 py-2 rounded-2xl bg-secondary text-sm focus:outline-none" />
+            <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Location" className="w-full px-3 py-2 rounded-2xl bg-secondary text-sm focus:outline-none" />
+            <input value={form.organizer} onChange={(e) => setForm({ ...form, organizer: e.target.value })} placeholder="Organizer (e.g. CS Club)" className="w-full px-3 py-2 rounded-2xl bg-secondary text-sm focus:outline-none" />
+            <button onClick={createEvent} disabled={submitting} className="w-full py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50">
+              {submitting ? "Creating…" : "Create event"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
