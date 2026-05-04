@@ -263,10 +263,17 @@ const CommentsSheet = ({ postId, onClose }: { postId: string; onClose: () => voi
   const load = async () => {
     const { data } = await supabase
       .from("post_comments")
-      .select("id,content,created_at,author_id,author:profiles!inner(name,avatar_url)")
+      .select("id,content,created_at,author_id")
       .eq("post_id", postId)
       .order("created_at", { ascending: true });
-    setItems((data ?? []) as unknown as Comment[]);
+    const rows = (data ?? []) as Comment[];
+    const ids = Array.from(new Set(rows.map((r) => r.author_id)));
+    if (ids.length) {
+      const { data: profs } = await supabase.from("profiles").select("id,name,avatar_url").in("id", ids);
+      const map = new Map((profs ?? []).map((p: any) => [p.id, p]));
+      rows.forEach((r) => { r.author = map.get(r.author_id) as any; });
+    }
+    setItems(rows);
     setLoading(false);
   };
 
