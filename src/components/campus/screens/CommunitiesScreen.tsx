@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Users } from "lucide-react";
+import { Users, Plus, X } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ALL_INTERESTS } from "@/data/constants";
 
 interface Community {
   id: string;
@@ -21,6 +22,9 @@ export const CommunitiesScreen = () => {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [joined, setJoined] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ name: "", description: "", interest: ALL_INTERESTS[0], emoji: "✨", color: "from-violet-500 to-fuchsia-500" });
+  const [submitting, setSubmitting] = useState(false);
 
   const load = async () => {
     const { data: comms } = await supabase.from("communities").select("*").order("name");
@@ -37,6 +41,27 @@ export const CommunitiesScreen = () => {
   };
 
   useEffect(() => { load(); }, [user?.id]);
+
+  const createCommunity = async () => {
+    if (!user || !form.name.trim()) { toast.error("Name is required"); return; }
+    setSubmitting(true);
+    const { data, error } = await supabase.from("communities").insert({
+      name: form.name.trim(),
+      description: form.description.trim(),
+      interest: form.interest,
+      emoji: form.emoji || "✨",
+      color: form.color,
+    }).select("id").single();
+    if (!error && data) {
+      await supabase.from("community_members").insert({ community_id: data.id, user_id: user.id });
+    }
+    setSubmitting(false);
+    if (error) return toast.error(error.message);
+    toast.success(`${form.name} created!`);
+    setShowCreate(false);
+    setForm({ name: "", description: "", interest: ALL_INTERESTS[0], emoji: "✨", color: "from-violet-500 to-fuchsia-500" });
+    load();
+  };
 
   const toggle = async (c: Community) => {
     if (!user) return;
@@ -57,7 +82,11 @@ export const CommunitiesScreen = () => {
   return (
     <div className="animate-fade-in-up">
       <Header title="Communities" subtitle="Tribes built around what you love" />
-
+      <div className="px-5 mt-3 flex justify-end">
+        <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-1.5 bg-gradient-hero text-primary-foreground px-4 py-2 rounded-full text-sm font-semibold shadow-soft hover:shadow-glow transition-smooth">
+          <Plus className="h-4 w-4" /> New community
+        </button>
+      </div>
       {loading && <p className="text-center text-sm text-muted-foreground py-8">Loading…</p>}
 
       {myCommunities.length > 0 && (
@@ -94,6 +123,28 @@ export const CommunitiesScreen = () => {
           ))}
         </div>
       </div>
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-fade-in-up" onClick={() => setShowCreate(false)}>
+          <div className="bg-card rounded-3xl p-5 w-full max-w-md shadow-elevated animate-scale-in space-y-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold">Create community</h3>
+              <button onClick={() => setShowCreate(false)} aria-label="Close" className="h-8 w-8 rounded-full hover:bg-secondary flex items-center justify-center"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="flex gap-2">
+              <input value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value.slice(0, 2) })} className="w-14 px-3 py-2 rounded-2xl bg-secondary text-center text-lg focus:outline-none" />
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Community name *" className="flex-1 px-3 py-2 rounded-2xl bg-secondary text-sm focus:outline-none" />
+            </div>
+            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} placeholder="What's this community about?" className="w-full px-3 py-2 rounded-2xl bg-secondary text-sm focus:outline-none resize-none" />
+            <select value={form.interest} onChange={(e) => setForm({ ...form, interest: e.target.value })} className="w-full px-3 py-2 rounded-2xl bg-secondary text-sm focus:outline-none">
+              {ALL_INTERESTS.map((i) => <option key={i} value={i}>{i}</option>)}
+            </select>
+            <button onClick={createCommunity} disabled={submitting} className="w-full py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50">
+              {submitting ? "Creating…" : "Create community"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

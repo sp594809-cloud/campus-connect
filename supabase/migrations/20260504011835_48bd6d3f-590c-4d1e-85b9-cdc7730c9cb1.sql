@@ -1,0 +1,1 @@
+CREATE POLICY "communities_insert_auth" ON public.communities FOR INSERT TO authenticated WITH CHECK (true);
