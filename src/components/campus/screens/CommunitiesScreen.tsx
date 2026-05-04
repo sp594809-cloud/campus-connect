@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Users, Plus, X } from "lucide-react";
+import { Users, Plus, X, Trash2 } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +15,7 @@ interface Community {
   emoji: string;
   color: string;
   member_count: number;
+  created_by: string | null;
 }
 
 export const CommunitiesScreen = () => {
@@ -51,6 +52,7 @@ export const CommunitiesScreen = () => {
       interest: form.interest,
       emoji: form.emoji || "✨",
       color: form.color,
+      created_by: user.id,
     }).select("id").single();
     if (!error && data) {
       await supabase.from("community_members").insert({ community_id: data.id, user_id: user.id });
@@ -75,6 +77,15 @@ export const CommunitiesScreen = () => {
       await supabase.from("community_members").insert({ community_id: c.id, user_id: user.id });
       toast.success(`Joined ${c.name}!`);
     }
+  };
+
+  const deleteCommunity = async (c: Community) => {
+    if (!user) return;
+    if (!confirm(`Delete "${c.name}"? This cannot be undone.`)) return;
+    const { error } = await supabase.from("communities").delete().eq("id", c.id);
+    if (error) return toast.error(error.message);
+    toast.success(`${c.name} deleted`);
+    setCommunities((prev) => prev.filter((x) => x.id !== c.id));
   };
 
   const myCommunities = communities.filter((c) => joined[c.id]);
@@ -115,18 +126,25 @@ export const CommunitiesScreen = () => {
                 <p className="text-xs text-muted-foreground line-clamp-1">{c.description}</p>
                 <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1"><Users className="h-3 w-3" /> {c.member_count}</p>
               </div>
-              <button onClick={() => toggle(c)} className={cn("px-3 py-1.5 rounded-full text-xs font-bold transition-smooth",
-                joined[c.id] ? "bg-secondary text-secondary-foreground" : "bg-primary text-primary-foreground hover:shadow-glow")}>
-                {joined[c.id] ? "Joined" : "Join"}
-              </button>
+              <div className="flex items-center gap-1.5">
+                {c.created_by === user?.id && (
+                  <button onClick={() => deleteCommunity(c)} aria-label="Delete" className="h-8 w-8 rounded-full bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20 transition-smooth">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <button onClick={() => toggle(c)} className={cn("px-3 py-1.5 rounded-full text-xs font-bold transition-smooth",
+                  joined[c.id] ? "bg-secondary text-secondary-foreground" : "bg-primary text-primary-foreground hover:shadow-glow")}>
+                  {joined[c.id] ? "Joined" : "Join"}
+                </button>
+              </div>
             </div>
           ))}
         </div>
       </div>
 
       {showCreate && (
-        <div className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-fade-in-up" onClick={() => setShowCreate(false)}>
-          <div className="bg-card rounded-3xl p-5 w-full max-w-md shadow-elevated animate-scale-in space-y-3" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 overflow-y-auto animate-fade-in-up" onClick={() => setShowCreate(false)}>
+          <div className="bg-card rounded-3xl p-5 w-full max-w-md shadow-elevated animate-scale-in space-y-3 my-auto max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-bold">Create community</h3>
               <button onClick={() => setShowCreate(false)} aria-label="Close" className="h-8 w-8 rounded-full hover:bg-secondary flex items-center justify-center"><X className="h-4 w-4" /></button>
