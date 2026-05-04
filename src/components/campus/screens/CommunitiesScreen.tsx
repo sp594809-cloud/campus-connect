@@ -79,6 +79,15 @@ export const CommunitiesScreen = () => {
     }
   };
 
+  const deleteCommunity = async (c: Community) => {
+    if (!user) return;
+    if (!confirm(`Delete "${c.name}"? This cannot be undone.`)) return;
+    const { error } = await supabase.from("communities").delete().eq("id", c.id);
+    if (error) return toast.error(error.message);
+    toast.success(`${c.name} deleted`);
+    setCommunities((prev) => prev.filter((x) => x.id !== c.id));
+  };
+
   const myCommunities = communities.filter((c) => joined[c.id]);
 
   return (
