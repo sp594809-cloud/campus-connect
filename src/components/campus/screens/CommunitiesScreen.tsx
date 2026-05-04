@@ -125,11 +125,11 @@ export const CommunitiesScreen = () => {
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Your communities</p>
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
             {myCommunities.map((c) => (
-              <div key={c.id} className={cn("min-w-[140px] rounded-2xl p-3 text-white shadow-soft bg-gradient-to-br", c.color)}>
+              <button key={c.id} onClick={() => setActiveChat(c)} className={cn("min-w-[140px] text-left rounded-2xl p-3 text-white shadow-soft bg-gradient-to-br hover:shadow-glow active:scale-95 transition-smooth", c.color)}>
                 <div className="text-2xl">{c.emoji}</div>
                 <p className="text-sm font-bold mt-1 leading-tight">{c.name}</p>
-                <p className="text-[11px] opacity-80 mt-0.5">{c.member_count} members</p>
-              </div>
+                <p className="text-[11px] opacity-80 mt-0.5">Tap to open · {c.member_count} members</p>
+              </button>
             ))}
           </div>
         </div>
