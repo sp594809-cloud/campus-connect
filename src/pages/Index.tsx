@@ -235,6 +235,57 @@ const StudentRegistrationForm = () => {
               </div>
             )}
 
+            {step === "email" && (
+              <div className="space-y-4">
+                <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-green-700 font-medium">
+                    Hi {fullName.split(" ")[0]}! Where should we send your verification code?
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className={`flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${!useCustomEmail ? "border-indigo-500 bg-indigo-50" : "border-gray-200"}`}>
+                    <input type="radio" name="email-choice" checked={!useCustomEmail} onChange={() => { setUseCustomEmail(false); setError(""); }} className="mt-1" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-gray-800">College email (recommended)</div>
+                      <div className="text-xs text-gray-600 truncate">{defaultEmail}</div>
+                    </div>
+                  </label>
+                  <label className={`flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${useCustomEmail ? "border-indigo-500 bg-indigo-50" : "border-gray-200"}`}>
+                    <input type="radio" name="email-choice" checked={useCustomEmail} onChange={() => { setUseCustomEmail(true); setError(""); }} className="mt-1" />
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold text-gray-800">Use my own email</div>
+                      <div className="text-xs text-gray-600">Enter a personal email below</div>
+                    </div>
+                  </label>
+                </div>
+                {useCustomEmail && (
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="email"
+                      value={customEmail}
+                      onChange={(e) => { setCustomEmail(e.target.value); setError(""); }}
+                      placeholder="you@example.com"
+                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 transition-all ${error ? "border-red-300 focus:border-red-500 focus:ring-red-200" : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-200"}`}
+                    />
+                  </div>
+                )}
+                {error && (
+                  <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <XCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-700 font-medium">{error}</p>
+                  </div>
+                )}
+                <button onClick={confirmEmailAndSend} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md">
+                  Send verification code
+                </button>
+                <button type="button" onClick={() => setStep("phone")} className="w-full text-xs font-semibold text-gray-500 hover:text-gray-700">
+                  ← Change phone number
+                </button>
+              </div>
+            )}
+
             {step === "otp" && (
               <div className="space-y-4">
                 <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
