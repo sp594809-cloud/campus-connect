@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { ALL_INTERESTS } from "@/data/constants";
 import { InterestChip } from "@/components/campus/InterestChip";
 import { getStudentSession, type StudentSession } from "./Index";
+import { supabase } from "@/integrations/supabase/client";
 import networkBg from "@/assets/network-bg.jpg";
 
 const SESSION_KEY = "campus_student_session";
@@ -42,7 +43,29 @@ const StudentOnboarding = () => {
     setSkill("");
   };
 
-  const finish = () => {
+  const finish = async () => {
+    const { data: auth } = await supabase.auth.getUser();
+    const uid = auth.user?.id;
+    if (uid) {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          name: session.full_name,
+          bio: bio.trim(),
+          branch: branch as any,
+          year: year as any,
+          interests,
+          skills,
+          open_to_mentor: openToMentor,
+          looking_for_mentor_in: mentorTopic.trim() ? [mentorTopic.trim()] : [],
+          onboarded: true,
+        })
+        .eq("id", uid);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+    }
     const updated: StudentSession = {
       ...session,
       bio: bio.trim(),
