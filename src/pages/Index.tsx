@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Hash, Loader2, Phone, ShieldCheck, User, XCircle } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { CheckCircle2, Hash, Loader2, Phone, User, XCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const SESSION_KEY = "campus_student_session";
 
