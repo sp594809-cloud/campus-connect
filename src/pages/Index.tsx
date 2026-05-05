@@ -4,6 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CheckCircle2, Hash, Loader2, Mail, Phone, User, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { auth as firebaseAuth } from "@/lib/firebase";
+import {
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  type ConfirmationResult,
+} from "firebase/auth";
 
 const SESSION_KEY = "campus_student_session";
 
@@ -32,7 +38,8 @@ export const getStudentSession = (): StudentSession | null => {
 };
 
 type Mode = "register" | "login";
-type Step = "phone" | "email" | "otp";
+type Step = "phone" | "method" | "email" | "otp";
+type Method = "email" | "sms";
 
 const StudentRegistrationForm = () => {
   const navigate = useNavigate();
@@ -49,6 +56,35 @@ const StudentRegistrationForm = () => {
   const [customEmail, setCustomEmail] = useState("");
   const [otpInput, setOtpInput] = useState("");
   const [resendIn, setResendIn] = useState(0);
+  const [method, setMethod] = useState<Method>("email");
+  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
+
+  const ensureRecaptcha = () => {
+    const w = window as any;
+    if (!w._recaptchaVerifier) {
+      w._recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, "recaptcha-container", {
+        size: "invisible",
+      });
+    }
+    return w._recaptchaVerifier as RecaptchaVerifier;
+  };
+
+  const sendSmsOtp = async () => {
+    try {
+      const verifier = ensureRecaptcha();
+      const e164 = phoneNumber.startsWith("+") ? phoneNumber : `+91${phoneNumber}`;
+      const conf = await signInWithPhoneNumber(firebaseAuth, e164, verifier);
+      setConfirmation(conf);
+      setResendIn(30);
+      toast.success(`SMS code sent to ${e164}`);
+      return true;
+    } catch (e: any) {
+      const msg = e?.message || "Failed to send SMS code";
+      toast.error(msg);
+      setError(msg);
+      return false;
+    }
+  };
 
   useEffect(() => {
     const session = getStudentSession();
@@ -117,7 +153,7 @@ const StudentRegistrationForm = () => {
       setUseCustomEmail(false);
       setCustomEmail("");
       setOtpInput("");
-      setStep("email");
+      setStep("method");
     } finally { setIsLoading(false); }
   };
 
@@ -143,13 +179,26 @@ const StudentRegistrationForm = () => {
     }
     setIsLoading(true);
     try {
-      const { data: vData, error: vErr } = await supabase.functions.invoke("verify-otp", {
-        body: { phone_number: phoneNumber, code: otpInput },
-      });
-      if (vErr || (vData as any)?.error) {
-        const msg = (vData as any)?.error || vErr?.message || "Invalid verification code.";
-        setError(msg); toast.error(msg);
-        return;
+      if (method === "sms") {
+        if (!confirmation) {
+          const m = "Please request an SMS code first.";
+          setError(m); toast.error(m); return;
+        }
+        try {
+          await confirmation.confirm(otpInput);
+        } catch {
+          const m = "Invalid SMS verification code.";
+          setError(m); toast.error(m); return;
+        }
+      } else {
+        const { data: vData, error: vErr } = await supabase.functions.invoke("verify-otp", {
+          body: { phone_number: phoneNumber, code: otpInput },
+        });
+        if (vErr || (vData as any)?.error) {
+          const msg = (vData as any)?.error || vErr?.message || "Invalid verification code.";
+          setError(msg); toast.error(msg);
+          return;
+        }
       }
 
       const { data: auth } = await supabase.auth.getUser();
@@ -201,7 +250,7 @@ const StudentRegistrationForm = () => {
   const switchMode = (m: Mode) => {
     setMode(m); setStep("phone"); setError(""); setFullName(""); setEnrollmentId("");
     setGeneratedEmail(""); setDefaultEmail(""); setCustomEmail(""); setUseCustomEmail(false);
-    setOtpInput("");
+    setOtpInput(""); setConfirmation(null);
   };
 
   return (
@@ -211,9 +260,10 @@ const StudentRegistrationForm = () => {
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
             <h1 className="text-2xl font-bold text-white">{mode === "register" ? "Student Registration" : "Welcome back"}</h1>
             <p className="text-indigo-100 text-sm mt-1">
-              {step === "phone" && "Step 1 of 3 — Verify your phone number"}
-              {step === "email" && "Step 2 of 3 — Choose your email"}
-              {step === "otp" && "Step 3 of 3 — Enter verification code"}
+              {step === "phone" && "Step 1 — Verify your phone number"}
+              {step === "method" && "Step 2 — Choose verification method"}
+              {step === "email" && "Step 3 — Choose your email"}
+              {step === "otp" && "Step 3 — Enter verification code"}
             </p>
           </div>
 
@@ -245,6 +295,49 @@ const StudentRegistrationForm = () => {
                 )}
                 <button onClick={lookupStudent} disabled={isLoading || phoneNumber.length < 10} className="mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md">
                   {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Checking…</> : <>Continue</>}
+                </button>
+              </div>
+            )}
+
+            {step === "method" && (
+              <div className="space-y-4">
+                <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-green-700 font-medium">
+                    Hi {fullName.split(" ")[0]}! How would you like to verify?
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className={`flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${method === "email" ? "border-indigo-500 bg-indigo-50" : "border-gray-200"}`}>
+                    <input type="radio" name="verify-method" checked={method === "email"} onChange={() => setMethod("email")} className="mt-1" />
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Mail className="h-4 w-4" /> Email verification</div>
+                      <div className="text-xs text-gray-600">Receive a 6-digit code by email</div>
+                    </div>
+                  </label>
+                  <label className={`flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${method === "sms" ? "border-indigo-500 bg-indigo-50" : "border-gray-200"}`}>
+                    <input type="radio" name="verify-method" checked={method === "sms"} onChange={() => setMethod("sms")} className="mt-1" />
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Phone className="h-4 w-4" /> Mobile OTP (SMS)</div>
+                      <div className="text-xs text-gray-600">Receive an SMS code at +91{phoneNumber}</div>
+                    </div>
+                  </label>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (method === "email") { setStep("email"); return; }
+                    setIsLoading(true);
+                    const ok = await sendSmsOtp();
+                    setIsLoading(false);
+                    if (ok) { setOtpInput(""); setStep("otp"); }
+                  }}
+                  disabled={isLoading}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                >
+                  {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Sending…</> : "Continue"}
+                </button>
+                <button type="button" onClick={() => setStep("phone")} className="w-full text-xs font-semibold text-gray-500 hover:text-gray-700">
+                  ← Change phone number
                 </button>
               </div>
             )}
@@ -305,7 +398,10 @@ const StudentRegistrationForm = () => {
                 <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-green-700 font-medium">
-                    Verification code sent to <span className="font-semibold">{generatedEmail}</span>
+                    Verification code sent to{" "}
+                    <span className="font-semibold">
+                      {method === "sms" ? `+91${phoneNumber}` : generatedEmail}
+                    </span>
                   </p>
                 </div>
                 <div>
@@ -337,7 +433,7 @@ const StudentRegistrationForm = () => {
                   <div className="flex justify-between items-center mt-2">
                     <button
                       type="button"
-                      onClick={() => sendOtpToEmail(generatedEmail)}
+                      onClick={() => (method === "sms" ? sendSmsOtp() : sendOtpToEmail(generatedEmail))}
                       disabled={resendIn > 0}
                       className="text-xs font-semibold text-indigo-600 disabled:text-gray-400"
                     >
@@ -363,6 +459,7 @@ const StudentRegistrationForm = () => {
         </div>
 
         <p className="text-center text-sm text-gray-500 mt-4">Need help? Contact your college administration</p>
+        <div id="recaptcha-container" />
       </div>
     </div>
   );
