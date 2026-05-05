@@ -28,10 +28,22 @@ const InterviewExperienceDetail = () => {
   useEffect(() => {
     if (!id) return;
     (async () => {
-      const { data: e } = await supabase.from("interview_experiences")
-        .select("*,author:profiles!interview_experiences_author_id_fkey(name,avatar_url,branch,year)")
-        .eq("id", id).maybeSingle();
-      setExp(e as unknown as Exp);
+      const { data: e, error } = await supabase
+        .from("interview_experiences")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (error) console.error("interview detail error", error);
+      let author = null as Exp["author"];
+      if (e?.author_id && !e.anonymous) {
+        const { data: p } = await supabase
+          .from("profiles")
+          .select("name,avatar_url,branch,year")
+          .eq("id", e.author_id)
+          .maybeSingle();
+        author = (p as any) ?? null;
+      }
+      setExp(e ? ({ ...(e as any), author } as Exp) : null);
       const { data: r } = await supabase.from("interview_rounds").select("*").eq("experience_id", id).order("round_number");
       setRounds((r ?? []) as Round[]);
       setLoading(false);
