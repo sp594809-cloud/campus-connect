@@ -55,6 +55,12 @@ const StudentRegistrationForm = () => {
         setError(msg); toast.error(msg); return;
       }
       setStudent(data as Student);
+      const { data: existing } = await supabase
+        .from("registered_phones")
+        .select("phone_number")
+        .eq("phone_number", phoneNumber)
+        .maybeSingle();
+      if (existing) toast.message("You're already registered — tap Continue to sign in.");
     } finally { setIsLoading(false); }
   };
 
