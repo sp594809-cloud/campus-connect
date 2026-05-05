@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User } from "lucide-react";
-import { getStudentSession } from "./Index";
+import { Loader2, User } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { PhoneShell } from "@/components/campus/PhoneShell";
 import { BottomNav, type Tab } from "@/components/campus/BottomNav";
 import { HomeScreen } from "@/components/campus/screens/HomeScreen";
@@ -9,21 +9,30 @@ import { DiscoverScreen } from "@/components/campus/screens/DiscoverScreen";
 import { CommunitiesScreen } from "@/components/campus/screens/CommunitiesScreen";
 import { EventsScreen } from "@/components/campus/screens/EventsScreen";
 import { MessagesScreen } from "@/components/campus/screens/MessagesScreen";
+import { MarketplaceScreen } from "@/components/campus/screens/MarketplaceScreen";
 
 const CampusApp = () => {
   const navigate = useNavigate();
+  const { session, profile, loading } = useAuth();
   const [tab, setTab] = useState<Tab>("home");
   const [openWith, setOpenWith] = useState<string | null>(null);
-  const session = getStudentSession();
 
   useEffect(() => {
+    if (loading) return;
     if (!session) navigate("/", { replace: true });
-    else if (!session.onboarded) navigate("/onboarding", { replace: true });
-  }, [session, navigate]);
+    else if (profile && !profile.onboarded) navigate("/onboarding", { replace: true });
+  }, [session, profile, loading, navigate]);
 
-  if (!session) return null;
+  if (loading || !session || !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
-  const initials = session.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+  const name = profile.name || "there";
+  const initials = name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
 
   const goMessage = (id: string) => {
     setOpenWith(id);
@@ -33,7 +42,7 @@ const CampusApp = () => {
   return (
     <PhoneShell>
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/60 px-4 py-2 flex items-center gap-2">
-        <p className="text-sm font-bold flex-1">Hi, {session.full_name.split(" ")[0]} 👋</p>
+        <p className="text-sm font-bold flex-1">Hi, {name.split(" ")[0]} 👋</p>
         <button
           onClick={() => navigate("/me")}
           aria-label="Open profile"
@@ -46,6 +55,7 @@ const CampusApp = () => {
       {tab === "discover" && <DiscoverScreen onMessage={goMessage} />}
       {tab === "communities" && <CommunitiesScreen />}
       {tab === "events" && <EventsScreen />}
+      {tab === "marketplace" && <MarketplaceScreen />}
       {tab === "messages" && (
         <MessagesScreen openWith={openWith} onClearOpen={() => setOpenWith(null)} />
       )}
