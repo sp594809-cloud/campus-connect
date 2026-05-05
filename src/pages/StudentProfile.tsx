@@ -1,32 +1,35 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Camera, GraduationCap, Hash, Loader2, LogOut, Phone, ShieldCheck, Sparkles, Target } from "lucide-react";
+import { ArrowLeft, Camera, GraduationCap, Hash, Loader2, LogOut, ShieldCheck, Sparkles, Target } from "lucide-react";
 import { toast } from "sonner";
-import { getStudentSession } from "./Index";
 import { InterestChip } from "@/components/campus/InterestChip";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
 const StudentProfile = () => {
   const navigate = useNavigate();
-  const session = getStudentSession();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, loading, refreshProfile, signOut } = useAuth();
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!session) navigate("/", { replace: true });
-  }, [session, navigate]);
+    if (loading) return;
+    if (!user) navigate("/", { replace: true });
+  }, [user, loading, navigate]);
 
-  if (!session) return null;
+  if (loading || !user || !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
-  const handleLogout = () => {
-    localStorage.removeItem("campus_student_session");
-    toast.success("Logged out");
-    navigate("/", { replace: true });
+  const handleLogout = async () => {
+    await signOut();
   };
 
-  const initials = session.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+  const initials = (profile.name || "?").split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
 
   const onPickAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; e.target.value = "";
@@ -65,7 +68,7 @@ const StudentProfile = () => {
             <div className="flex items-start gap-4 relative">
               <div className="relative">
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt={session.full_name} className="h-20 w-20 rounded-2xl object-cover ring-4 ring-primary-foreground/20" />
+                  <img src={profile.avatar_url} alt={profile.name} className="h-20 w-20 rounded-2xl object-cover ring-4 ring-primary-foreground/20" />
                 ) : (
                   <div className="h-20 w-20 rounded-2xl bg-primary-foreground/20 ring-4 ring-primary-foreground/20 flex items-center justify-center font-bold text-2xl">{initials}</div>
                 )}
@@ -76,35 +79,34 @@ const StudentProfile = () => {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-1.5">
-                  <h2 className="text-xl font-bold leading-tight">{session.full_name}</h2>
-                  <ShieldCheck className="h-4 w-4" />
+                  <h2 className="text-xl font-bold leading-tight">{profile.name}</h2>
+                  {profile.college_email_verified && <ShieldCheck className="h-4 w-4" />}
                 </div>
-                <p className="text-xs opacity-90 mt-0.5">{session.branch ?? "—"} · {session.year ?? "—"} year</p>
-                {session.bio && <p className="text-xs opacity-90 mt-2">{session.bio}</p>}
+                <p className="text-xs opacity-90 mt-0.5">{profile.branch ?? "—"} · {profile.year ?? "—"} year</p>
+                {profile.bio && <p className="text-xs opacity-90 mt-2">{profile.bio}</p>}
               </div>
             </div>
           </div>
 
           <div className="mt-5 space-y-3">
-            <InfoRow Icon={Hash} label="Enrollment ID" value={session.enrollment_id} />
-            <InfoRow Icon={Phone} label="Phone" value={session.phone_number} />
-            <InfoRow Icon={GraduationCap} label="Branch & Year" value={`${session.branch ?? "—"} · ${session.year ?? "—"}`} />
+            <InfoRow Icon={Hash} label="User ID" value={user.id.slice(0, 8) + "…"} />
+            <InfoRow Icon={GraduationCap} label="Branch & Year" value={`${profile.branch ?? "—"} · ${profile.year ?? "—"}`} />
           </div>
 
-          {!!session.interests?.length && (
+          {!!profile.interests?.length && (
             <div className="mt-5">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Interests</p>
               <div className="flex gap-1.5 flex-wrap">
-                {session.interests.map((i) => <InterestChip key={i} label={i} />)}
+                {profile.interests.map((i) => <InterestChip key={i} label={i} />)}
               </div>
             </div>
           )}
 
-          {!!session.skills?.length && (
+          {!!profile.skills?.length && (
             <div className="mt-5">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Skills</p>
               <div className="flex gap-1.5 flex-wrap">
-                {session.skills.map((s) => (
+                {profile.skills.map((s) => (
                   <span key={s} className="px-3 py-1.5 rounded-full bg-accent-soft text-accent text-xs font-semibold">{s}</span>
                 ))}
               </div>
@@ -113,11 +115,11 @@ const StudentProfile = () => {
 
           <div className="mt-5 rounded-2xl border border-border bg-card p-4">
             <div className="flex items-center gap-2 text-sm font-semibold">
-              <Sparkles className="h-4 w-4 text-accent" /> Open to mentor: {session.open_to_mentor ? "Yes" : "No"}
+              <Sparkles className="h-4 w-4 text-accent" /> Open to mentor: {profile.open_to_mentor ? "Yes" : "No"}
             </div>
-            {session.looking_for_mentor_in && (
+            {profile.looking_for_mentor_in?.length > 0 && (
               <div className="flex items-center gap-2 text-sm font-semibold mt-2">
-                <Target className="h-4 w-4 text-accent" /> Looking for mentor in: {session.looking_for_mentor_in}
+                <Target className="h-4 w-4 text-accent" /> Looking for mentor in: {profile.looking_for_mentor_in.join(", ")}
               </div>
             )}
           </div>

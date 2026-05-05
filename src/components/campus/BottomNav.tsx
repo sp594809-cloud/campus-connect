@@ -1,11 +1,12 @@
-import { Calendar, Compass, Home, MessageCircle, Users } from "lucide-react";
+import { Calendar, Compass, Home, MessageCircle, ShoppingBag, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type Tab = "home" | "discover" | "communities" | "events" | "messages";
+export type Tab = "home" | "discover" | "communities" | "events" | "marketplace" | "messages";
 
 const items: { id: Tab; label: string; Icon: typeof Home }[] = [
   { id: "home", label: "Home", Icon: Home },
   { id: "discover", label: "Discover", Icon: Compass },
+  { id: "marketplace", label: "Market", Icon: ShoppingBag },
   { id: "communities", label: "Groups", Icon: Users },
   { id: "events", label: "Events", Icon: Calendar },
   { id: "messages", label: "Chats", Icon: MessageCircle },

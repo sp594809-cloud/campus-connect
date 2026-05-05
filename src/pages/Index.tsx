@@ -1,9 +1,10 @@
-// StudentRegistrationForm.tsx
+// StudentRegistrationForm.tsx — Phone OTP via Firebase, then auto-sign-in to Lovable Cloud
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CheckCircle2, Hash, Loader2, Mail, Phone, User, XCircle } from "lucide-react";
+import { CheckCircle2, Hash, Loader2, Phone, User, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { auth as firebaseAuth } from "@/lib/firebase";
 import {
   RecaptchaVerifier,
@@ -11,38 +12,18 @@ import {
   type ConfirmationResult,
 } from "firebase/auth";
 
-const SESSION_KEY = "campus_student_session";
-
-export type StudentSession = {
-  full_name: string;
-  enrollment_id: string;
-  phone_number: string;
-  loggedInAt: string;
-  onboarded?: boolean;
-  bio?: string;
-  branch?: string;
-  year?: string;
-  interests?: string[];
-  skills?: string[];
-  open_to_mentor?: boolean;
-  looking_for_mentor_in?: string;
-};
-
-export const getStudentSession = (): StudentSession | null => {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as StudentSession) : null;
-  } catch {
-    return null;
-  }
-};
+// Deterministic Supabase credentials so the same student always lands on the same auth user.
+const credsFor = (enrollmentId: string, phoneNumber: string) => ({
+  email: `${enrollmentId.trim().toLowerCase().replace(/[^a-z0-9]/g, "")}@phone.campus.local`,
+  password: `cc-${phoneNumber}-${enrollmentId}-v1`,
+});
 
 type Mode = "register" | "login";
-type Step = "phone" | "method" | "email" | "otp";
-type Method = "email" | "sms";
+type Step = "phone" | "otp";
 
 const StudentRegistrationForm = () => {
   const navigate = useNavigate();
+  const { session, profile, loading: authLoading, refreshProfile } = useAuth();
   const [mode, setMode] = useState<Mode>("register");
   const [step, setStep] = useState<Step>("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -50,13 +31,8 @@ const StudentRegistrationForm = () => {
   const [enrollmentId, setEnrollmentId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [generatedEmail, setGeneratedEmail] = useState("");
-  const [defaultEmail, setDefaultEmail] = useState("");
-  const [useCustomEmail, setUseCustomEmail] = useState(false);
-  const [customEmail, setCustomEmail] = useState("");
   const [otpInput, setOtpInput] = useState("");
   const [resendIn, setResendIn] = useState(0);
-  const [method, setMethod] = useState<Method>("email");
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
 
   const ensureRecaptcha = () => {
@@ -86,33 +62,18 @@ const StudentRegistrationForm = () => {
     }
   };
 
+  // Session-aware redirect: if a Supabase user is already signed in, route them.
   useEffect(() => {
-    const session = getStudentSession();
-    if (session) {
-      navigate(session.onboarded ? "/campus" : "/onboarding", { replace: true });
-    }
-  }, [navigate]);
+    if (authLoading) return;
+    if (!session) return;
+    navigate(profile?.onboarded ? "/campus" : "/onboarding", { replace: true });
+  }, [session, profile, authLoading, navigate]);
 
   useEffect(() => {
     if (resendIn <= 0) return;
     const t = setInterval(() => setResendIn((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(t);
   }, [resendIn]);
-
-  const sendOtpToEmail = async (email: string) => {
-    const { data, error } = await supabase.functions.invoke("send-otp", {
-      body: { phone_number: phoneNumber, email, full_name: fullName },
-    });
-    if (error || (data as any)?.error) {
-      const msg = (data as any)?.error || error?.message || "Failed to send code";
-      toast.error(msg);
-      setError(msg);
-      return false;
-    }
-    setResendIn(30);
-    toast.success(`Verification code sent to ${email}`);
-    return true;
-  };
 
   const lookupStudent = async () => {
     setError("");
@@ -147,28 +108,11 @@ const StudentRegistrationForm = () => {
 
       setFullName(student.full_name);
       setEnrollmentId(student.enrollment_id);
-      const email = `${student.enrollment_id}@mail.ljku.edu.in`;
-      setDefaultEmail(email);
-      setGeneratedEmail(email);
-      setUseCustomEmail(false);
-      setCustomEmail("");
       setOtpInput("");
-      setStep("method");
+      // Send the SMS immediately, then move to OTP entry.
+      const ok = await sendSmsOtp();
+      if (ok) setStep("otp");
     } finally { setIsLoading(false); }
-  };
-
-  const confirmEmailAndSend = async () => {
-    setError("");
-    const email = useCustomEmail ? customEmail.trim() : defaultEmail;
-    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    if (!valid) {
-      const m = "Enter a valid email address.";
-      setError(m); toast.error(m); return;
-    }
-    setGeneratedEmail(email);
-    setOtpInput("");
-    const ok = await sendOtpToEmail(email);
-    if (ok) setStep("otp");
   };
 
   const completeLogin = async () => {
@@ -179,69 +123,65 @@ const StudentRegistrationForm = () => {
     }
     setIsLoading(true);
     try {
-      if (method === "sms") {
-        if (!confirmation) {
-          const m = "Please request an SMS code first.";
-          setError(m); toast.error(m); return;
-        }
-        try {
-          await confirmation.confirm(otpInput);
-        } catch {
-          const m = "Invalid SMS verification code.";
-          setError(m); toast.error(m); return;
-        }
-      } else {
-        const { data: vData, error: vErr } = await supabase.functions.invoke("verify-otp", {
-          body: { phone_number: phoneNumber, code: otpInput },
+      // 1) Verify the SMS code with Firebase.
+      if (!confirmation) {
+        const m = "Please request an SMS code first.";
+        setError(m); toast.error(m); return;
+      }
+      try {
+        await confirmation.confirm(otpInput);
+      } catch {
+        const m = "Invalid SMS verification code.";
+        setError(m); toast.error(m); return;
+      }
+      // We don't need the Firebase session afterwards.
+      try { await firebaseAuth.signOut(); } catch { /* ignore */ }
+
+      // 2) Sign into Lovable Cloud with deterministic creds (sign-in, fallback to sign-up).
+      const { email, password } = credsFor(enrollmentId, phoneNumber);
+      let { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInErr) {
+        const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { name: fullName } },
         });
-        if (vErr || (vData as any)?.error) {
-          const msg = (vData as any)?.error || vErr?.message || "Invalid verification code.";
-          setError(msg); toast.error(msg);
-          return;
+        if (signUpErr) {
+          setError(signUpErr.message); toast.error(signUpErr.message); return;
+        }
+        signInData = signUpData as any;
+        // Some setups still need an explicit sign-in even with auto-confirm on.
+        if (!signInData?.session) {
+          const retry = await supabase.auth.signInWithPassword({ email, password });
+          if (retry.error) { setError(retry.error.message); toast.error(retry.error.message); return; }
+          signInData = retry.data as any;
         }
       }
-
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user?.id;
+      const uid = signInData?.user?.id;
       if (!uid) {
-        const m = "You must be signed in. Please log in and try again.";
-        setError(m); toast.error(m);
-        navigate("/auth", { replace: true });
-        return;
+        const m = "Sign-in failed. Please try again.";
+        setError(m); toast.error(m); return;
       }
 
       if (mode === "register") {
-        // Block duplicates: enrollment_id is unique, phone_number is PK.
         const { error: regErr } = await supabase
           .from("registered_phones")
           .insert({ phone_number: phoneNumber, full_name: fullName, enrollment_id: enrollmentId });
-        if (regErr) {
-          // 23505 = unique_violation
-          if ((regErr as any).code === "23505") {
-            const m = "This student is already registered. Please log in instead.";
-            setError(m); toast.error(m); return;
-          }
-          setError(regErr.message); toast.error(regErr.message); return;
+        if (regErr && (regErr as any).code !== "23505") {
+          console.warn("registered_phones insert failed", regErr);
         }
       }
 
       // Sync the official roster name onto the user's profile so posts always show the right name.
-      const { error: profErr } = await supabase
-        .from("profiles")
-        .update({ name: fullName })
-        .eq("id", uid);
-      if (profErr) console.warn("profile name sync failed", profErr);
+      await supabase.from("profiles").update({ name: fullName }).eq("id", uid);
+      await refreshProfile();
 
-      const session: StudentSession = {
-        full_name: fullName,
-        enrollment_id: enrollmentId,
-        phone_number: phoneNumber,
-        loggedInAt: new Date().toISOString(),
-        onboarded: mode === "login",
-      };
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      // Decide where to send the user based on their actual onboarding status in the DB.
+      const { data: prof } = await supabase
+        .from("profiles").select("onboarded").eq("id", uid).maybeSingle();
+
       toast.success(`Welcome, ${fullName.split(" ")[0]}!`);
-      navigate(mode === "login" ? "/campus" : "/onboarding", { replace: true });
+      navigate(prof?.onboarded ? "/campus" : "/onboarding", { replace: true });
     } finally {
       setIsLoading(false);
     }
@@ -249,7 +189,6 @@ const StudentRegistrationForm = () => {
 
   const switchMode = (m: Mode) => {
     setMode(m); setStep("phone"); setError(""); setFullName(""); setEnrollmentId("");
-    setGeneratedEmail(""); setDefaultEmail(""); setCustomEmail(""); setUseCustomEmail(false);
     setOtpInput(""); setConfirmation(null);
   };
 
@@ -261,9 +200,7 @@ const StudentRegistrationForm = () => {
             <h1 className="text-2xl font-bold text-white">{mode === "register" ? "Student Registration" : "Welcome back"}</h1>
             <p className="text-indigo-100 text-sm mt-1">
               {step === "phone" && "Step 1 — Verify your phone number"}
-              {step === "method" && "Step 2 — Choose verification method"}
-              {step === "email" && "Step 3 — Choose your email"}
-              {step === "otp" && "Step 3 — Enter verification code"}
+              {step === "otp" && "Step 2 — Enter the SMS code"}
             </p>
           </div>
 
@@ -299,109 +236,12 @@ const StudentRegistrationForm = () => {
               </div>
             )}
 
-            {step === "method" && (
-              <div className="space-y-4">
-                <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-green-700 font-medium">
-                    Hi {fullName.split(" ")[0]}! How would you like to verify?
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <label className={`flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${method === "email" ? "border-indigo-500 bg-indigo-50" : "border-gray-200"}`}>
-                    <input type="radio" name="verify-method" checked={method === "email"} onChange={() => setMethod("email")} className="mt-1" />
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Mail className="h-4 w-4" /> Email verification</div>
-                      <div className="text-xs text-gray-600">Receive a 6-digit code by email</div>
-                    </div>
-                  </label>
-                  <label className={`flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${method === "sms" ? "border-indigo-500 bg-indigo-50" : "border-gray-200"}`}>
-                    <input type="radio" name="verify-method" checked={method === "sms"} onChange={() => setMethod("sms")} className="mt-1" />
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Phone className="h-4 w-4" /> Mobile OTP (SMS)</div>
-                      <div className="text-xs text-gray-600">Receive an SMS code at +91{phoneNumber}</div>
-                    </div>
-                  </label>
-                </div>
-                <button
-                  onClick={async () => {
-                    if (method === "email") { setStep("email"); return; }
-                    setIsLoading(true);
-                    const ok = await sendSmsOtp();
-                    setIsLoading(false);
-                    if (ok) { setOtpInput(""); setStep("otp"); }
-                  }}
-                  disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
-                >
-                  {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Sending…</> : "Continue"}
-                </button>
-                <button type="button" onClick={() => setStep("phone")} className="w-full text-xs font-semibold text-gray-500 hover:text-gray-700">
-                  ← Change phone number
-                </button>
-              </div>
-            )}
-
-            {step === "email" && (
-              <div className="space-y-4">
-                <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-green-700 font-medium">
-                    Hi {fullName.split(" ")[0]}! Where should we send your verification code?
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <label className={`flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${!useCustomEmail ? "border-indigo-500 bg-indigo-50" : "border-gray-200"}`}>
-                    <input type="radio" name="email-choice" checked={!useCustomEmail} onChange={() => { setUseCustomEmail(false); setError(""); }} className="mt-1" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-gray-800">College email (recommended)</div>
-                      <div className="text-xs text-gray-600 truncate">{defaultEmail}</div>
-                    </div>
-                  </label>
-                  <label className={`flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${useCustomEmail ? "border-indigo-500 bg-indigo-50" : "border-gray-200"}`}>
-                    <input type="radio" name="email-choice" checked={useCustomEmail} onChange={() => { setUseCustomEmail(true); setError(""); }} className="mt-1" />
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-gray-800">Use my own email</div>
-                      <div className="text-xs text-gray-600">Enter a personal email below</div>
-                    </div>
-                  </label>
-                </div>
-                {useCustomEmail && (
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="email"
-                      value={customEmail}
-                      onChange={(e) => { setCustomEmail(e.target.value); setError(""); }}
-                      placeholder="you@example.com"
-                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 transition-all ${error ? "border-red-300 focus:border-red-500 focus:ring-red-200" : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-200"}`}
-                    />
-                  </div>
-                )}
-                {error && (
-                  <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <XCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-red-700 font-medium">{error}</p>
-                  </div>
-                )}
-                <button onClick={confirmEmailAndSend} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md">
-                  Send verification code
-                </button>
-                <button type="button" onClick={() => setStep("phone")} className="w-full text-xs font-semibold text-gray-500 hover:text-gray-700">
-                  ← Change phone number
-                </button>
-              </div>
-            )}
-
             {step === "otp" && (
               <div className="space-y-4">
                 <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-green-700 font-medium">
-                    Verification code sent to{" "}
-                    <span className="font-semibold">
-                      {method === "sms" ? `+91${phoneNumber}` : generatedEmail}
-                    </span>
+                    SMS code sent to <span className="font-semibold">+91{phoneNumber}</span>
                   </p>
                 </div>
                 <div>
@@ -433,7 +273,7 @@ const StudentRegistrationForm = () => {
                   <div className="flex justify-between items-center mt-2">
                     <button
                       type="button"
-                      onClick={() => (method === "sms" ? sendSmsOtp() : sendOtpToEmail(generatedEmail))}
+                      onClick={() => sendSmsOtp()}
                       disabled={resendIn > 0}
                       className="text-xs font-semibold text-indigo-600 disabled:text-gray-400"
                     >

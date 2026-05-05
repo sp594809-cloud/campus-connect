@@ -1,21 +1,20 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Check, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ALL_INTERESTS } from "@/data/constants";
 import { InterestChip } from "@/components/campus/InterestChip";
-import { getStudentSession, type StudentSession } from "./Index";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import networkBg from "@/assets/network-bg.jpg";
 
-const SESSION_KEY = "campus_student_session";
 const branches = ["CSE", "ECE", "ME", "EE", "CE", "IT", "Other"] as const;
 const years = ["1st", "2nd", "3rd", "4th"] as const;
 
 const StudentOnboarding = () => {
   const navigate = useNavigate();
-  const session = getStudentSession();
+  const { session, profile, loading, refreshProfile, user } = useAuth();
   const [step, setStep] = useState(0);
   const [bio, setBio] = useState("");
   const [branch, setBranch] = useState("");
@@ -27,11 +26,18 @@ const StudentOnboarding = () => {
   const [mentorTopic, setMentorTopic] = useState("");
 
   useEffect(() => {
+    if (loading) return;
     if (!session) navigate("/", { replace: true });
-    else if (session.onboarded) navigate("/campus", { replace: true });
-  }, [session, navigate]);
+    else if (profile?.onboarded) navigate("/campus", { replace: true });
+  }, [session, profile, loading, navigate]);
 
-  if (!session) return null;
+  if (loading || !session || !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   const next = () => setStep((s) => s + 1);
   const back = () => setStep((s) => Math.max(0, s - 1));
@@ -44,40 +50,23 @@ const StudentOnboarding = () => {
   };
 
   const finish = async () => {
-    const { data: auth } = await supabase.auth.getUser();
-    const uid = auth.user?.id;
-    if (uid) {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          name: session.full_name,
-          bio: bio.trim(),
-          branch: branch as any,
-          year: year as any,
-          interests,
-          skills,
-          open_to_mentor: openToMentor,
-          looking_for_mentor_in: mentorTopic.trim() ? [mentorTopic.trim()] : [],
-          onboarded: true,
-        })
-        .eq("id", uid);
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-    }
-    const updated: StudentSession = {
-      ...session,
-      bio: bio.trim(),
-      branch,
-      year,
-      interests,
-      skills,
-      open_to_mentor: openToMentor,
-      looking_for_mentor_in: mentorTopic.trim(),
-      onboarded: true,
-    };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(updated));
+    if (!user) { navigate("/", { replace: true }); return; }
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        name: profile.name,
+        bio: bio.trim(),
+        branch: branch as any,
+        year: year as any,
+        interests,
+        skills,
+        open_to_mentor: openToMentor,
+        looking_for_mentor_in: mentorTopic.trim() ? [mentorTopic.trim()] : [],
+        onboarded: true,
+      })
+      .eq("id", user.id);
+    if (error) { toast.error(error.message); return; }
+    await refreshProfile();
     toast.success("You're in! Welcome 🎉");
     navigate("/campus", { replace: true });
   };
@@ -107,7 +96,7 @@ const StudentOnboarding = () => {
 
         {step === 0 && (
           <div className="mt-2 animate-fade-in-up">
-            <h2 className="text-2xl font-bold">Hey {session.full_name.split(" ")[0]} 👋</h2>
+            <h2 className="text-2xl font-bold">Hey {profile.name.split(" ")[0]} 👋</h2>
             <p className="text-sm text-muted-foreground mt-1">Tell us where you are on campus.</p>
             <textarea
               value={bio}
