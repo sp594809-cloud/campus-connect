@@ -68,7 +68,7 @@ const StudentProfile = () => {
             <div className="flex items-start gap-4 relative">
               <div className="relative">
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt={session.full_name} className="h-20 w-20 rounded-2xl object-cover ring-4 ring-primary-foreground/20" />
+                  <img src={profile.avatar_url} alt={profile.name} className="h-20 w-20 rounded-2xl object-cover ring-4 ring-primary-foreground/20" />
                 ) : (
                   <div className="h-20 w-20 rounded-2xl bg-primary-foreground/20 ring-4 ring-primary-foreground/20 flex items-center justify-center font-bold text-2xl">{initials}</div>
                 )}
