@@ -19,6 +19,10 @@ export interface Profile {
   company: string | null;
   college_email_verified: boolean;
   onboarded: boolean;
+  mentor_mode: boolean;
+  weekly_capacity: number;
+  mentor_bio: string | null;
+  mentor_topics: string[];
 }
 
 interface AuthCtx {
