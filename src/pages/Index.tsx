@@ -4,6 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CheckCircle2, Hash, Loader2, Mail, Phone, User, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { auth as firebaseAuth } from "@/lib/firebase";
+import {
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  type ConfirmationResult,
+} from "firebase/auth";
 
 const SESSION_KEY = "campus_student_session";
 
@@ -32,7 +38,8 @@ export const getStudentSession = (): StudentSession | null => {
 };
 
 type Mode = "register" | "login";
-type Step = "phone" | "email" | "otp";
+type Step = "phone" | "method" | "email" | "otp";
+type Method = "email" | "sms";
 
 const StudentRegistrationForm = () => {
   const navigate = useNavigate();
@@ -49,6 +56,35 @@ const StudentRegistrationForm = () => {
   const [customEmail, setCustomEmail] = useState("");
   const [otpInput, setOtpInput] = useState("");
   const [resendIn, setResendIn] = useState(0);
+  const [method, setMethod] = useState<Method>("email");
+  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
+
+  const ensureRecaptcha = () => {
+    const w = window as any;
+    if (!w._recaptchaVerifier) {
+      w._recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, "recaptcha-container", {
+        size: "invisible",
+      });
+    }
+    return w._recaptchaVerifier as RecaptchaVerifier;
+  };
+
+  const sendSmsOtp = async () => {
+    try {
+      const verifier = ensureRecaptcha();
+      const e164 = phoneNumber.startsWith("+") ? phoneNumber : `+91${phoneNumber}`;
+      const conf = await signInWithPhoneNumber(firebaseAuth, e164, verifier);
+      setConfirmation(conf);
+      setResendIn(30);
+      toast.success(`SMS code sent to ${e164}`);
+      return true;
+    } catch (e: any) {
+      const msg = e?.message || "Failed to send SMS code";
+      toast.error(msg);
+      setError(msg);
+      return false;
+    }
+  };
 
   useEffect(() => {
     const session = getStudentSession();
@@ -117,7 +153,7 @@ const StudentRegistrationForm = () => {
       setUseCustomEmail(false);
       setCustomEmail("");
       setOtpInput("");
-      setStep("email");
+      setStep("method");
     } finally { setIsLoading(false); }
   };
 
@@ -143,13 +179,26 @@ const StudentRegistrationForm = () => {
     }
     setIsLoading(true);
     try {
-      const { data: vData, error: vErr } = await supabase.functions.invoke("verify-otp", {
-        body: { phone_number: phoneNumber, code: otpInput },
-      });
-      if (vErr || (vData as any)?.error) {
-        const msg = (vData as any)?.error || vErr?.message || "Invalid verification code.";
-        setError(msg); toast.error(msg);
-        return;
+      if (method === "sms") {
+        if (!confirmation) {
+          const m = "Please request an SMS code first.";
+          setError(m); toast.error(m); return;
+        }
+        try {
+          await confirmation.confirm(otpInput);
+        } catch {
+          const m = "Invalid SMS verification code.";
+          setError(m); toast.error(m); return;
+        }
+      } else {
+        const { data: vData, error: vErr } = await supabase.functions.invoke("verify-otp", {
+          body: { phone_number: phoneNumber, code: otpInput },
+        });
+        if (vErr || (vData as any)?.error) {
+          const msg = (vData as any)?.error || vErr?.message || "Invalid verification code.";
+          setError(msg); toast.error(msg);
+          return;
+        }
       }
 
       const { data: auth } = await supabase.auth.getUser();
@@ -201,7 +250,7 @@ const StudentRegistrationForm = () => {
   const switchMode = (m: Mode) => {
     setMode(m); setStep("phone"); setError(""); setFullName(""); setEnrollmentId("");
     setGeneratedEmail(""); setDefaultEmail(""); setCustomEmail(""); setUseCustomEmail(false);
-    setOtpInput("");
+    setOtpInput(""); setConfirmation(null);
   };
 
   return (
@@ -211,9 +260,10 @@ const StudentRegistrationForm = () => {
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
             <h1 className="text-2xl font-bold text-white">{mode === "register" ? "Student Registration" : "Welcome back"}</h1>
             <p className="text-indigo-100 text-sm mt-1">
-              {step === "phone" && "Step 1 of 3 — Verify your phone number"}
-              {step === "email" && "Step 2 of 3 — Choose your email"}
-              {step === "otp" && "Step 3 of 3 — Enter verification code"}
+              {step === "phone" && "Step 1 — Verify your phone number"}
+              {step === "method" && "Step 2 — Choose verification method"}
+              {step === "email" && "Step 3 — Choose your email"}
+              {step === "otp" && "Step 3 — Enter verification code"}
             </p>
           </div>
 
