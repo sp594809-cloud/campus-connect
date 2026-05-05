@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase, Filter, Plus, Search, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
+import { ArrowLeft, Briefcase, GitCompare, Plus, Search, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { COMPANY_CATEGORIES, type CompanyCategory } from "@/data/placement";
@@ -75,6 +75,19 @@ const InterviewExperiences = () => {
               <Plus className="h-4 w-4" /> Share your experience (+50 karma)
             </button>
           </div>
+        </div>
+
+        <div className="px-5 mt-3 grid grid-cols-2 gap-2">
+          <button onClick={() => navigate("/interview/compare")} className="rounded-2xl bg-card border border-border p-3 text-left hover:shadow-soft transition-smooth">
+            <GitCompare className="h-4 w-4 text-primary" />
+            <p className="text-xs font-bold mt-1">Compare</p>
+            <p className="text-[10px] text-muted-foreground">Side-by-side</p>
+          </button>
+          <button onClick={() => navigate("/mentors")} className="rounded-2xl bg-card border border-border p-3 text-left hover:shadow-soft transition-smooth">
+            <Users className="h-4 w-4 text-primary" />
+            <p className="text-xs font-bold mt-1">Mentors</p>
+            <p className="text-[10px] text-muted-foreground">Ask seniors</p>
+          </button>
         </div>
 
         <div className="px-5 mt-4">

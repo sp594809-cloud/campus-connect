@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Camera, GraduationCap, Hash, Loader2, LogOut, ShieldCheck, Sparkles, Target, Trash2 } from "lucide-react";
+import { ArrowLeft, Camera, GraduationCap, Hash, Loader2, LogOut, ShieldCheck, Sparkles, Target, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { InterestChip } from "@/components/campus/InterestChip";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { Switch } from "@/components/ui/switch";
 
 const StudentProfile = () => {
   const navigate = useNavigate();
@@ -42,6 +43,19 @@ const StudentProfile = () => {
       toast.success("Account removed from this app");
       window.location.href = "/";
     }
+  };
+
+  const eligibleForMentor = profile.placement_status === "Placed" || profile.placement_status === "Interning";
+
+  const toggleMentor = async (next: boolean) => {
+    if (next && !eligibleForMentor) {
+      toast.error("Set your placement status to Placed or Interning first.");
+      return;
+    }
+    const { error } = await supabase.from("profiles").update({ mentor_mode: next }).eq("id", user.id);
+    if (error) return toast.error(error.message);
+    await refreshProfile();
+    toast.success(next ? "You're now a Mentor 🧑‍🏫" : "Switched back to Candidate");
   };
 
   const initials = (profile.name || "?").split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
@@ -137,6 +151,26 @@ const StudentProfile = () => {
                 <Target className="h-4 w-4 text-accent" /> Looking for mentor in: {profile.looking_for_mentor_in.join(", ")}
               </div>
             )}
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-primary/30 bg-gradient-card p-4">
+            <div className="flex items-center gap-3">
+              <Users className="h-5 w-5 text-primary" />
+              <div className="flex-1">
+                <p className="font-bold text-sm">Mentor mode</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {profile.mentor_mode
+                    ? "You're listed in the Mentor Directory."
+                    : eligibleForMentor
+                      ? "Switch on to help juniors via 1:1 chats."
+                      : "Available once your status is Placed or Interning."}
+                </p>
+              </div>
+              <Switch checked={profile.mentor_mode} disabled={!eligibleForMentor && !profile.mentor_mode} onCheckedChange={toggleMentor} />
+            </div>
+            <button onClick={() => navigate("/mentors")} className="mt-3 w-full py-2 rounded-xl bg-secondary text-secondary-foreground text-xs font-semibold hover:bg-muted">
+              Browse Mentor Directory
+            </button>
           </div>
 
           <button

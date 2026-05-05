@@ -13,6 +13,8 @@ import UserProfile from "./pages/UserProfile.tsx";
 import InterviewExperiences from "./pages/InterviewExperiences.tsx";
 import InterviewPostFlow from "./pages/InterviewPostFlow.tsx";
 import InterviewExperienceDetail from "./pages/InterviewExperienceDetail.tsx";
+import InterviewCompare from "./pages/InterviewCompare.tsx";
+import MentorDirectory from "./pages/MentorDirectory.tsx";
 import { Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 
@@ -34,7 +36,9 @@ const App = () => (
             <Route path="/u/:id" element={<UserProfile />} />
             <Route path="/interview" element={<InterviewExperiences />} />
             <Route path="/interview/new" element={<InterviewPostFlow />} />
+            <Route path="/interview/compare" element={<InterviewCompare />} />
             <Route path="/interview/:id" element={<InterviewExperienceDetail />} />
+            <Route path="/mentors" element={<MentorDirectory />} />
             <Route path="/app" element={<Navigate to="/campus" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

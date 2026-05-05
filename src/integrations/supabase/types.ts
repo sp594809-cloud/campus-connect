@@ -143,6 +143,33 @@ export type Database = {
         }
         Relationships: []
       }
+      companies: {
+        Row: {
+          aliases: string[]
+          category: Database["public"]["Enums"]["company_category"]
+          created_at: string
+          emoji: string
+          id: string
+          name: string
+        }
+        Insert: {
+          aliases?: string[]
+          category: Database["public"]["Enums"]["company_category"]
+          created_at?: string
+          emoji?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          aliases?: string[]
+          category?: Database["public"]["Enums"]["company_category"]
+          created_at?: string
+          emoji?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       connection_requests: {
         Row: {
           created_at: string
@@ -722,12 +749,16 @@ export type Database = {
           interests: string[]
           linkedin: string | null
           looking_for_mentor_in: string[]
+          mentor_bio: string | null
+          mentor_mode: boolean
+          mentor_topics: string[]
           name: string
           onboarded: boolean
           open_to_mentor: boolean
           placement_status: Database["public"]["Enums"]["placement_status"]
           skills: string[]
           updated_at: string
+          weekly_capacity: number
           year: Database["public"]["Enums"]["year_type"] | null
         }
         Insert: {
@@ -742,12 +773,16 @@ export type Database = {
           interests?: string[]
           linkedin?: string | null
           looking_for_mentor_in?: string[]
+          mentor_bio?: string | null
+          mentor_mode?: boolean
+          mentor_topics?: string[]
           name?: string
           onboarded?: boolean
           open_to_mentor?: boolean
           placement_status?: Database["public"]["Enums"]["placement_status"]
           skills?: string[]
           updated_at?: string
+          weekly_capacity?: number
           year?: Database["public"]["Enums"]["year_type"] | null
         }
         Update: {
@@ -762,12 +797,16 @@ export type Database = {
           interests?: string[]
           linkedin?: string | null
           looking_for_mentor_in?: string[]
+          mentor_bio?: string | null
+          mentor_mode?: boolean
+          mentor_topics?: string[]
           name?: string
           onboarded?: boolean
           open_to_mentor?: boolean
           placement_status?: Database["public"]["Enums"]["placement_status"]
           skills?: string[]
           updated_at?: string
+          weekly_capacity?: number
           year?: Database["public"]["Enums"]["year_type"] | null
         }
         Relationships: []
