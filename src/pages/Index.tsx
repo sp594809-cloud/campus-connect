@@ -200,9 +200,7 @@ const StudentRegistrationForm = () => {
             <h1 className="text-2xl font-bold text-white">{mode === "register" ? "Student Registration" : "Welcome back"}</h1>
             <p className="text-indigo-100 text-sm mt-1">
               {step === "phone" && "Step 1 — Verify your phone number"}
-              {step === "method" && "Step 2 — Choose verification method"}
-              {step === "email" && "Step 3 — Choose your email"}
-              {step === "otp" && "Step 3 — Enter verification code"}
+              {step === "otp" && "Step 2 — Enter the SMS code"}
             </p>
           </div>
 
@@ -238,109 +236,12 @@ const StudentRegistrationForm = () => {
               </div>
             )}
 
-            {step === "method" && (
-              <div className="space-y-4">
-                <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-green-700 font-medium">
-                    Hi {fullName.split(" ")[0]}! How would you like to verify?
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <label className={`flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${method === "email" ? "border-indigo-500 bg-indigo-50" : "border-gray-200"}`}>
-                    <input type="radio" name="verify-method" checked={method === "email"} onChange={() => setMethod("email")} className="mt-1" />
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Mail className="h-4 w-4" /> Email verification</div>
-                      <div className="text-xs text-gray-600">Receive a 6-digit code by email</div>
-                    </div>
-                  </label>
-                  <label className={`flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${method === "sms" ? "border-indigo-500 bg-indigo-50" : "border-gray-200"}`}>
-                    <input type="radio" name="verify-method" checked={method === "sms"} onChange={() => setMethod("sms")} className="mt-1" />
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Phone className="h-4 w-4" /> Mobile OTP (SMS)</div>
-                      <div className="text-xs text-gray-600">Receive an SMS code at +91{phoneNumber}</div>
-                    </div>
-                  </label>
-                </div>
-                <button
-                  onClick={async () => {
-                    if (method === "email") { setStep("email"); return; }
-                    setIsLoading(true);
-                    const ok = await sendSmsOtp();
-                    setIsLoading(false);
-                    if (ok) { setOtpInput(""); setStep("otp"); }
-                  }}
-                  disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
-                >
-                  {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Sending…</> : "Continue"}
-                </button>
-                <button type="button" onClick={() => setStep("phone")} className="w-full text-xs font-semibold text-gray-500 hover:text-gray-700">
-                  ← Change phone number
-                </button>
-              </div>
-            )}
-
-            {step === "email" && (
-              <div className="space-y-4">
-                <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-green-700 font-medium">
-                    Hi {fullName.split(" ")[0]}! Where should we send your verification code?
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <label className={`flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${!useCustomEmail ? "border-indigo-500 bg-indigo-50" : "border-gray-200"}`}>
-                    <input type="radio" name="email-choice" checked={!useCustomEmail} onChange={() => { setUseCustomEmail(false); setError(""); }} className="mt-1" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-gray-800">College email (recommended)</div>
-                      <div className="text-xs text-gray-600 truncate">{defaultEmail}</div>
-                    </div>
-                  </label>
-                  <label className={`flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${useCustomEmail ? "border-indigo-500 bg-indigo-50" : "border-gray-200"}`}>
-                    <input type="radio" name="email-choice" checked={useCustomEmail} onChange={() => { setUseCustomEmail(true); setError(""); }} className="mt-1" />
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-gray-800">Use my own email</div>
-                      <div className="text-xs text-gray-600">Enter a personal email below</div>
-                    </div>
-                  </label>
-                </div>
-                {useCustomEmail && (
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="email"
-                      value={customEmail}
-                      onChange={(e) => { setCustomEmail(e.target.value); setError(""); }}
-                      placeholder="you@example.com"
-                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 transition-all ${error ? "border-red-300 focus:border-red-500 focus:ring-red-200" : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-200"}`}
-                    />
-                  </div>
-                )}
-                {error && (
-                  <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <XCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-red-700 font-medium">{error}</p>
-                  </div>
-                )}
-                <button onClick={confirmEmailAndSend} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md">
-                  Send verification code
-                </button>
-                <button type="button" onClick={() => setStep("phone")} className="w-full text-xs font-semibold text-gray-500 hover:text-gray-700">
-                  ← Change phone number
-                </button>
-              </div>
-            )}
-
             {step === "otp" && (
               <div className="space-y-4">
                 <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-green-700 font-medium">
-                    Verification code sent to{" "}
-                    <span className="font-semibold">
-                      {method === "sms" ? `+91${phoneNumber}` : generatedEmail}
-                    </span>
+                    SMS code sent to <span className="font-semibold">+91{phoneNumber}</span>
                   </p>
                 </div>
                 <div>
@@ -372,7 +273,7 @@ const StudentRegistrationForm = () => {
                   <div className="flex justify-between items-center mt-2">
                     <button
                       type="button"
-                      onClick={() => (method === "sms" ? sendSmsOtp() : sendOtpToEmail(generatedEmail))}
+                      onClick={() => sendSmsOtp()}
                       disabled={resendIn > 0}
                       className="text-xs font-semibold text-indigo-600 disabled:text-gray-400"
                     >
