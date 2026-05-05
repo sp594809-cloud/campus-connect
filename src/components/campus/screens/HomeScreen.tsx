@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Heart, MessageCircle, Pin, Plus, Send, Share2, Sparkles, X, Paperclip, FileText } from "lucide-react";
+import { Briefcase, Heart, MessageCircle, Pin, Plus, Send, Share2, Sparkles, X, Paperclip, FileText } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -119,12 +119,14 @@ export const HomeScreen = () => {
           <p className="mt-2 text-lg font-bold leading-snug">
             Hi {profile?.name?.split(" ")[0] ?? "there"} 👋 — share what you're building.
           </p>
-          <button
-            onClick={() => setShowCompose(true)}
-            className="mt-3 inline-flex items-center gap-1.5 bg-primary-foreground/20 hover:bg-primary-foreground/30 backdrop-blur px-3 py-1.5 rounded-full text-sm font-semibold"
-          >
-            <Plus className="h-4 w-4" /> Create post
-          </button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button onClick={() => setShowCompose(true)} className="inline-flex items-center gap-1.5 bg-primary-foreground/20 hover:bg-primary-foreground/30 backdrop-blur px-3 py-1.5 rounded-full text-sm font-semibold">
+              <Plus className="h-4 w-4" /> Create post
+            </button>
+            <button onClick={() => navigate("/interview")} className="inline-flex items-center gap-1.5 bg-primary-foreground/20 hover:bg-primary-foreground/30 backdrop-blur px-3 py-1.5 rounded-full text-sm font-semibold">
+              <Briefcase className="h-4 w-4" /> Placement Hub
+            </button>
+          </div>
         </div>
       </div>
 
