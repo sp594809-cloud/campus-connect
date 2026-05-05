@@ -10,6 +10,9 @@ import CampusApp from "./pages/CampusApp.tsx";
 import StudentOnboarding from "./pages/StudentOnboarding.tsx";
 import StudentProfile from "./pages/StudentProfile.tsx";
 import UserProfile from "./pages/UserProfile.tsx";
+import InterviewExperiences from "./pages/InterviewExperiences.tsx";
+import InterviewPostFlow from "./pages/InterviewPostFlow.tsx";
+import InterviewExperienceDetail from "./pages/InterviewExperienceDetail.tsx";
 import { Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 
@@ -29,6 +32,9 @@ const App = () => (
             <Route path="/campus" element={<CampusApp />} />
             <Route path="/me" element={<StudentProfile />} />
             <Route path="/u/:id" element={<UserProfile />} />
+            <Route path="/interview" element={<InterviewExperiences />} />
+            <Route path="/interview/new" element={<InterviewPostFlow />} />
+            <Route path="/interview/:id" element={<InterviewExperienceDetail />} />
             <Route path="/app" element={<Navigate to="/campus" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

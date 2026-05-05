@@ -289,6 +289,155 @@ export type Database = {
           },
         ]
       }
+      interview_experiences: {
+        Row: {
+          anonymous: boolean
+          application_source: Database["public"]["Enums"]["application_source"]
+          author_id: string
+          college_year_at_time: string | null
+          company_category: Database["public"]["Enums"]["company_category"]
+          company_name: string
+          created_at: string
+          ctc_lpa: number | null
+          id: string
+          interview_month: number | null
+          interview_year: number
+          interviewer_behavior:
+            | Database["public"]["Enums"]["interviewer_behavior"]
+            | null
+          mistakes: string | null
+          outcome: Database["public"]["Enums"]["interview_outcome"]
+          overall_difficulty: Database["public"]["Enums"]["difficulty_level"]
+          prep_duration_months: number | null
+          rejection_round: string | null
+          role: string
+          role_type: Database["public"]["Enums"]["role_type"]
+          strategy: string | null
+          updated_at: string
+          upvotes_count: number
+          verified: boolean
+        }
+        Insert: {
+          anonymous?: boolean
+          application_source?: Database["public"]["Enums"]["application_source"]
+          author_id: string
+          college_year_at_time?: string | null
+          company_category?: Database["public"]["Enums"]["company_category"]
+          company_name: string
+          created_at?: string
+          ctc_lpa?: number | null
+          id?: string
+          interview_month?: number | null
+          interview_year: number
+          interviewer_behavior?:
+            | Database["public"]["Enums"]["interviewer_behavior"]
+            | null
+          mistakes?: string | null
+          outcome: Database["public"]["Enums"]["interview_outcome"]
+          overall_difficulty?: Database["public"]["Enums"]["difficulty_level"]
+          prep_duration_months?: number | null
+          rejection_round?: string | null
+          role: string
+          role_type?: Database["public"]["Enums"]["role_type"]
+          strategy?: string | null
+          updated_at?: string
+          upvotes_count?: number
+          verified?: boolean
+        }
+        Update: {
+          anonymous?: boolean
+          application_source?: Database["public"]["Enums"]["application_source"]
+          author_id?: string
+          college_year_at_time?: string | null
+          company_category?: Database["public"]["Enums"]["company_category"]
+          company_name?: string
+          created_at?: string
+          ctc_lpa?: number | null
+          id?: string
+          interview_month?: number | null
+          interview_year?: number
+          interviewer_behavior?:
+            | Database["public"]["Enums"]["interviewer_behavior"]
+            | null
+          mistakes?: string | null
+          outcome?: Database["public"]["Enums"]["interview_outcome"]
+          overall_difficulty?: Database["public"]["Enums"]["difficulty_level"]
+          prep_duration_months?: number | null
+          rejection_round?: string | null
+          role?: string
+          role_type?: Database["public"]["Enums"]["role_type"]
+          strategy?: string | null
+          updated_at?: string
+          upvotes_count?: number
+          verified?: boolean
+        }
+        Relationships: []
+      }
+      interview_rounds: {
+        Row: {
+          code_language: string | null
+          code_snippet: string | null
+          created_at: string
+          description: string | null
+          difficulty: Database["public"]["Enums"]["difficulty_level"]
+          duration_minutes: number | null
+          experience_id: string
+          id: string
+          interviewer_behavior:
+            | Database["public"]["Enums"]["interviewer_behavior"]
+            | null
+          mistakes_made: string | null
+          question_types: string[]
+          round_number: number
+          round_type: Database["public"]["Enums"]["round_type"]
+          strategy_used: string | null
+        }
+        Insert: {
+          code_language?: string | null
+          code_snippet?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty?: Database["public"]["Enums"]["difficulty_level"]
+          duration_minutes?: number | null
+          experience_id: string
+          id?: string
+          interviewer_behavior?:
+            | Database["public"]["Enums"]["interviewer_behavior"]
+            | null
+          mistakes_made?: string | null
+          question_types?: string[]
+          round_number: number
+          round_type: Database["public"]["Enums"]["round_type"]
+          strategy_used?: string | null
+        }
+        Update: {
+          code_language?: string | null
+          code_snippet?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty?: Database["public"]["Enums"]["difficulty_level"]
+          duration_minutes?: number | null
+          experience_id?: string
+          id?: string
+          interviewer_behavior?:
+            | Database["public"]["Enums"]["interviewer_behavior"]
+            | null
+          mistakes_made?: string | null
+          question_types?: string[]
+          round_number?: number
+          round_type?: Database["public"]["Enums"]["round_type"]
+          strategy_used?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_rounds_experience_id_fkey"
+            columns: ["experience_id"]
+            isOneToOne: false
+            referencedRelation: "interview_experiences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_listings: {
         Row: {
           category: string
@@ -719,11 +868,35 @@ export type Database = {
       }
     }
     Enums: {
+      application_source:
+        | "tpo"
+        | "referral"
+        | "off_campus"
+        | "linkedin"
+        | "pool_campus"
       branch_type: "CSE" | "ECE" | "ME" | "EE" | "CE" | "IT" | "Other"
+      company_category:
+        | "product"
+        | "service"
+        | "fintech"
+        | "gcc"
+        | "startup"
+        | "core"
       connection_status: "pending" | "accepted" | "declined"
+      difficulty_level: "easy" | "medium" | "hard"
+      interview_outcome: "selected" | "rejected" | "waitlisted" | "withdrew"
+      interviewer_behavior: "friendly" | "neutral" | "stress_test" | "rude"
       mentorship_status: "pending" | "accepted" | "declined"
       placement_status: "Placed" | "Looking" | "Interning" | "N/A"
       post_type: "update" | "question" | "achievement" | "resource"
+      role_type: "internship" | "full_time" | "ppo"
+      round_type:
+        | "oa"
+        | "technical"
+        | "system_design"
+        | "managerial"
+        | "hr"
+        | "group_discussion"
       year_type: "1st" | "2nd" | "3rd" | "4th"
     }
     CompositeTypes: {
@@ -852,11 +1025,38 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      application_source: [
+        "tpo",
+        "referral",
+        "off_campus",
+        "linkedin",
+        "pool_campus",
+      ],
       branch_type: ["CSE", "ECE", "ME", "EE", "CE", "IT", "Other"],
+      company_category: [
+        "product",
+        "service",
+        "fintech",
+        "gcc",
+        "startup",
+        "core",
+      ],
       connection_status: ["pending", "accepted", "declined"],
+      difficulty_level: ["easy", "medium", "hard"],
+      interview_outcome: ["selected", "rejected", "waitlisted", "withdrew"],
+      interviewer_behavior: ["friendly", "neutral", "stress_test", "rude"],
       mentorship_status: ["pending", "accepted", "declined"],
       placement_status: ["Placed", "Looking", "Interning", "N/A"],
       post_type: ["update", "question", "achievement", "resource"],
+      role_type: ["internship", "full_time", "ppo"],
+      round_type: [
+        "oa",
+        "technical",
+        "system_design",
+        "managerial",
+        "hr",
+        "group_discussion",
+      ],
       year_type: ["1st", "2nd", "3rd", "4th"],
     },
   },
