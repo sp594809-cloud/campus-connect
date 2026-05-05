@@ -40,9 +40,19 @@ const UserProfile = () => {
   const send = async () => {
     if (!user) return;
     setSending(true);
-    const { error } = await supabase.from("connection_requests").insert({ requester_id: user.id, recipient_id: p.id, message: msg.trim().slice(0, 280) });
-    setSending(false);
-    if (error) return toast.error(error.message);
+    const message = msg.trim().slice(0, 280);
+    const { error } = await supabase.from("connection_requests").insert({ requester_id: user.id, recipient_id: p.id, message });
+    if (error && (error.code === "23505" || /duplicate/i.test(error.message))) {
+      const { error: e2 } = await supabase
+        .from("connection_requests")
+        .update({ status: "pending", message, requester_id: user.id, recipient_id: p.id })
+        .or(`and(requester_id.eq.${user.id},recipient_id.eq.${p.id}),and(requester_id.eq.${p.id},recipient_id.eq.${user.id})`);
+      setSending(false);
+      if (e2) return toast.error(e2.message);
+    } else {
+      setSending(false);
+      if (error) return toast.error(error.message);
+    }
     toast.success("Request sent!");
     setShowReq(false); setMsg(""); reload();
   };
