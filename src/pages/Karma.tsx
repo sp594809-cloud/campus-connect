@@ -52,6 +52,9 @@ const Karma = () => {
   const nxt = nextBadge(k);
   const progress = nxt ? Math.min(100, ((k - cur.threshold) / (nxt.threshold - cur.threshold)) * 100) : 100;
 
+  const aspire = events.filter((e) => !LEGACY_ACTIONS.has(e.action)).reduce((s, e) => s + e.points, 0);
+  const legacy = events.filter((e) => LEGACY_ACTIONS.has(e.action)).reduce((s, e) => s + e.points, 0);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary via-background to-accent-soft">
       <div className="mx-auto max-w-md min-h-screen bg-background relative shadow-elevated pb-10">
@@ -75,6 +78,19 @@ const Karma = () => {
                 <p className="text-[11px] opacity-90 mt-1">{nxt.threshold - k} to <b>{nxt.label}</b> {nxt.emoji}</p>
               </div>
             )}
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="rounded-2xl p-3 border border-border bg-gradient-to-br from-sky-50 to-indigo-50 dark:from-sky-950/30 dark:to-indigo-950/30">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">🌱 Aspire</p>
+              <p className="text-2xl font-black mt-0.5">{aspire}</p>
+              <p className="text-[10px] text-muted-foreground">From learning & engaging</p>
+            </div>
+            <div className="rounded-2xl p-3 border border-border bg-gradient-to-br from-amber-50 to-rose-50 dark:from-amber-950/30 dark:to-rose-950/30">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">🏛️ Legacy</p>
+              <p className="text-2xl font-black mt-0.5">{legacy}</p>
+              <p className="text-[10px] text-muted-foreground">From helping juniors</p>
+            </div>
           </div>
 
           <div className="mt-4 flex gap-2">
