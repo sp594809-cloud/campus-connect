@@ -71,11 +71,18 @@ export const DiscoverScreen = ({ onMessage }: { onMessage: (id: string) => void 
   const sendRequest = async () => {
     if (!user || !requestTo) return;
     setSending(true);
-    const { error } = await supabase.from("connection_requests").insert({
+    const message = reqMessage.trim().slice(0, 280);
+    let { error } = await supabase.from("connection_requests").insert({
       requester_id: user.id,
       recipient_id: requestTo.id,
-      message: reqMessage.trim().slice(0, 280),
+      message,
     });
+    if (error && (error.code === "23505" || /duplicate/i.test(error.message))) {
+      await supabase.from("connection_requests").delete()
+        .or(`and(requester_id.eq.${user.id},recipient_id.eq.${requestTo.id}),and(requester_id.eq.${requestTo.id},recipient_id.eq.${user.id})`);
+      const retry = await supabase.from("connection_requests").insert({ requester_id: user.id, recipient_id: requestTo.id, message });
+      error = retry.error;
+    }
     setSending(false);
     if (error) return toast.error(error.message);
     toast.success(`Request sent to ${requestTo.name.split(" ")[0]}!`);
