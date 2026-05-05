@@ -355,7 +355,10 @@ const StudentRegistrationForm = () => {
                 <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-green-700 font-medium">
-                    Verification code sent to <span className="font-semibold">{generatedEmail}</span>
+                    Verification code sent to{" "}
+                    <span className="font-semibold">
+                      {method === "sms" ? `+91${phoneNumber}` : generatedEmail}
+                    </span>
                   </p>
                 </div>
                 <div>
@@ -387,7 +390,7 @@ const StudentRegistrationForm = () => {
                   <div className="flex justify-between items-center mt-2">
                     <button
                       type="button"
-                      onClick={() => sendOtpToEmail(generatedEmail)}
+                      onClick={() => (method === "sms" ? sendSmsOtp() : sendOtpToEmail(generatedEmail))}
                       disabled={resendIn > 0}
                       className="text-xs font-semibold text-indigo-600 disabled:text-gray-400"
                     >
