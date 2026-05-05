@@ -465,6 +465,36 @@ export type Database = {
           },
         ]
       }
+      karma_events: {
+        Row: {
+          action: Database["public"]["Enums"]["karma_action"]
+          created_at: string
+          id: string
+          note: string | null
+          points: number
+          ref_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["karma_action"]
+          created_at?: string
+          id?: string
+          note?: string | null
+          points: number
+          ref_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["karma_action"]
+          created_at?: string
+          id?: string
+          note?: string | null
+          points?: number
+          ref_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       marketplace_listings: {
         Row: {
           category: string
@@ -747,6 +777,7 @@ export type Database = {
           github: string | null
           id: string
           interests: string[]
+          karma_total: number
           linkedin: string | null
           looking_for_mentor_in: string[]
           mentor_bio: string | null
@@ -771,6 +802,7 @@ export type Database = {
           github?: string | null
           id: string
           interests?: string[]
+          karma_total?: number
           linkedin?: string | null
           looking_for_mentor_in?: string[]
           mentor_bio?: string | null
@@ -795,6 +827,7 @@ export type Database = {
           github?: string | null
           id?: string
           interests?: string[]
+          karma_total?: number
           linkedin?: string | null
           looking_for_mentor_in?: string[]
           mentor_bio?: string | null
@@ -925,6 +958,13 @@ export type Database = {
       difficulty_level: "easy" | "medium" | "hard"
       interview_outcome: "selected" | "rejected" | "waitlisted" | "withdrew"
       interviewer_behavior: "friendly" | "neutral" | "stress_test" | "rude"
+      karma_action:
+        | "interview_post"
+        | "mentorship_completed"
+        | "advice_upvoted"
+        | "daily_streak"
+        | "resume_review"
+        | "mock_interview"
       mentorship_status: "pending" | "accepted" | "declined"
       placement_status: "Placed" | "Looking" | "Interning" | "N/A"
       post_type: "update" | "question" | "achievement" | "resource"
@@ -1084,6 +1124,14 @@ export const Constants = {
       difficulty_level: ["easy", "medium", "hard"],
       interview_outcome: ["selected", "rejected", "waitlisted", "withdrew"],
       interviewer_behavior: ["friendly", "neutral", "stress_test", "rude"],
+      karma_action: [
+        "interview_post",
+        "mentorship_completed",
+        "advice_upvoted",
+        "daily_streak",
+        "resume_review",
+        "mock_interview",
+      ],
       mentorship_status: ["pending", "accepted", "declined"],
       placement_status: ["Placed", "Looking", "Interning", "N/A"],
       post_type: ["update", "question", "achievement", "resource"],
