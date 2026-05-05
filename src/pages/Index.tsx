@@ -1,9 +1,10 @@
-// StudentRegistrationForm.tsx
+// StudentRegistrationForm.tsx — Phone OTP via Firebase, then auto-sign-in to Lovable Cloud
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CheckCircle2, Hash, Loader2, Mail, Phone, User, XCircle } from "lucide-react";
+import { CheckCircle2, Hash, Loader2, Phone, User, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { auth as firebaseAuth } from "@/lib/firebase";
 import {
   RecaptchaVerifier,
@@ -11,38 +12,18 @@ import {
   type ConfirmationResult,
 } from "firebase/auth";
 
-const SESSION_KEY = "campus_student_session";
-
-export type StudentSession = {
-  full_name: string;
-  enrollment_id: string;
-  phone_number: string;
-  loggedInAt: string;
-  onboarded?: boolean;
-  bio?: string;
-  branch?: string;
-  year?: string;
-  interests?: string[];
-  skills?: string[];
-  open_to_mentor?: boolean;
-  looking_for_mentor_in?: string;
-};
-
-export const getStudentSession = (): StudentSession | null => {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as StudentSession) : null;
-  } catch {
-    return null;
-  }
-};
+// Deterministic Supabase credentials so the same student always lands on the same auth user.
+const credsFor = (enrollmentId: string, phoneNumber: string) => ({
+  email: `${enrollmentId.trim().toLowerCase().replace(/[^a-z0-9]/g, "")}@phone.campus.local`,
+  password: `cc-${phoneNumber}-${enrollmentId}-v1`,
+});
 
 type Mode = "register" | "login";
-type Step = "phone" | "method" | "email" | "otp";
-type Method = "email" | "sms";
+type Step = "phone" | "otp";
 
 const StudentRegistrationForm = () => {
   const navigate = useNavigate();
+  const { session, profile, loading: authLoading, refreshProfile } = useAuth();
   const [mode, setMode] = useState<Mode>("register");
   const [step, setStep] = useState<Step>("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -50,13 +31,8 @@ const StudentRegistrationForm = () => {
   const [enrollmentId, setEnrollmentId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [generatedEmail, setGeneratedEmail] = useState("");
-  const [defaultEmail, setDefaultEmail] = useState("");
-  const [useCustomEmail, setUseCustomEmail] = useState(false);
-  const [customEmail, setCustomEmail] = useState("");
   const [otpInput, setOtpInput] = useState("");
   const [resendIn, setResendIn] = useState(0);
-  const [method, setMethod] = useState<Method>("email");
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
 
   const ensureRecaptcha = () => {
@@ -86,33 +62,18 @@ const StudentRegistrationForm = () => {
     }
   };
 
+  // Session-aware redirect: if a Supabase user is already signed in, route them.
   useEffect(() => {
-    const session = getStudentSession();
-    if (session) {
-      navigate(session.onboarded ? "/campus" : "/onboarding", { replace: true });
-    }
-  }, [navigate]);
+    if (authLoading) return;
+    if (!session) return;
+    navigate(profile?.onboarded ? "/campus" : "/onboarding", { replace: true });
+  }, [session, profile, authLoading, navigate]);
 
   useEffect(() => {
     if (resendIn <= 0) return;
     const t = setInterval(() => setResendIn((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(t);
   }, [resendIn]);
-
-  const sendOtpToEmail = async (email: string) => {
-    const { data, error } = await supabase.functions.invoke("send-otp", {
-      body: { phone_number: phoneNumber, email, full_name: fullName },
-    });
-    if (error || (data as any)?.error) {
-      const msg = (data as any)?.error || error?.message || "Failed to send code";
-      toast.error(msg);
-      setError(msg);
-      return false;
-    }
-    setResendIn(30);
-    toast.success(`Verification code sent to ${email}`);
-    return true;
-  };
 
   const lookupStudent = async () => {
     setError("");
@@ -147,28 +108,11 @@ const StudentRegistrationForm = () => {
 
       setFullName(student.full_name);
       setEnrollmentId(student.enrollment_id);
-      const email = `${student.enrollment_id}@mail.ljku.edu.in`;
-      setDefaultEmail(email);
-      setGeneratedEmail(email);
-      setUseCustomEmail(false);
-      setCustomEmail("");
       setOtpInput("");
-      setStep("method");
+      // Send the SMS immediately, then move to OTP entry.
+      const ok = await sendSmsOtp();
+      if (ok) setStep("otp");
     } finally { setIsLoading(false); }
-  };
-
-  const confirmEmailAndSend = async () => {
-    setError("");
-    const email = useCustomEmail ? customEmail.trim() : defaultEmail;
-    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    if (!valid) {
-      const m = "Enter a valid email address.";
-      setError(m); toast.error(m); return;
-    }
-    setGeneratedEmail(email);
-    setOtpInput("");
-    const ok = await sendOtpToEmail(email);
-    if (ok) setStep("otp");
   };
 
   const completeLogin = async () => {
@@ -179,69 +123,65 @@ const StudentRegistrationForm = () => {
     }
     setIsLoading(true);
     try {
-      if (method === "sms") {
-        if (!confirmation) {
-          const m = "Please request an SMS code first.";
-          setError(m); toast.error(m); return;
-        }
-        try {
-          await confirmation.confirm(otpInput);
-        } catch {
-          const m = "Invalid SMS verification code.";
-          setError(m); toast.error(m); return;
-        }
-      } else {
-        const { data: vData, error: vErr } = await supabase.functions.invoke("verify-otp", {
-          body: { phone_number: phoneNumber, code: otpInput },
+      // 1) Verify the SMS code with Firebase.
+      if (!confirmation) {
+        const m = "Please request an SMS code first.";
+        setError(m); toast.error(m); return;
+      }
+      try {
+        await confirmation.confirm(otpInput);
+      } catch {
+        const m = "Invalid SMS verification code.";
+        setError(m); toast.error(m); return;
+      }
+      // We don't need the Firebase session afterwards.
+      try { await firebaseAuth.signOut(); } catch { /* ignore */ }
+
+      // 2) Sign into Lovable Cloud with deterministic creds (sign-in, fallback to sign-up).
+      const { email, password } = credsFor(enrollmentId, phoneNumber);
+      let { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInErr) {
+        const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { name: fullName } },
         });
-        if (vErr || (vData as any)?.error) {
-          const msg = (vData as any)?.error || vErr?.message || "Invalid verification code.";
-          setError(msg); toast.error(msg);
-          return;
+        if (signUpErr) {
+          setError(signUpErr.message); toast.error(signUpErr.message); return;
+        }
+        signInData = signUpData as any;
+        // Some setups still need an explicit sign-in even with auto-confirm on.
+        if (!signInData?.session) {
+          const retry = await supabase.auth.signInWithPassword({ email, password });
+          if (retry.error) { setError(retry.error.message); toast.error(retry.error.message); return; }
+          signInData = retry.data as any;
         }
       }
-
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user?.id;
+      const uid = signInData?.user?.id;
       if (!uid) {
-        const m = "You must be signed in. Please log in and try again.";
-        setError(m); toast.error(m);
-        navigate("/auth", { replace: true });
-        return;
+        const m = "Sign-in failed. Please try again.";
+        setError(m); toast.error(m); return;
       }
 
       if (mode === "register") {
-        // Block duplicates: enrollment_id is unique, phone_number is PK.
         const { error: regErr } = await supabase
           .from("registered_phones")
           .insert({ phone_number: phoneNumber, full_name: fullName, enrollment_id: enrollmentId });
-        if (regErr) {
-          // 23505 = unique_violation
-          if ((regErr as any).code === "23505") {
-            const m = "This student is already registered. Please log in instead.";
-            setError(m); toast.error(m); return;
-          }
-          setError(regErr.message); toast.error(regErr.message); return;
+        if (regErr && (regErr as any).code !== "23505") {
+          console.warn("registered_phones insert failed", regErr);
         }
       }
 
       // Sync the official roster name onto the user's profile so posts always show the right name.
-      const { error: profErr } = await supabase
-        .from("profiles")
-        .update({ name: fullName })
-        .eq("id", uid);
-      if (profErr) console.warn("profile name sync failed", profErr);
+      await supabase.from("profiles").update({ name: fullName }).eq("id", uid);
+      await refreshProfile();
 
-      const session: StudentSession = {
-        full_name: fullName,
-        enrollment_id: enrollmentId,
-        phone_number: phoneNumber,
-        loggedInAt: new Date().toISOString(),
-        onboarded: mode === "login",
-      };
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      // Decide where to send the user based on their actual onboarding status in the DB.
+      const { data: prof } = await supabase
+        .from("profiles").select("onboarded").eq("id", uid).maybeSingle();
+
       toast.success(`Welcome, ${fullName.split(" ")[0]}!`);
-      navigate(mode === "login" ? "/campus" : "/onboarding", { replace: true });
+      navigate(prof?.onboarded ? "/campus" : "/onboarding", { replace: true });
     } finally {
       setIsLoading(false);
     }
@@ -249,7 +189,6 @@ const StudentRegistrationForm = () => {
 
   const switchMode = (m: Mode) => {
     setMode(m); setStep("phone"); setError(""); setFullName(""); setEnrollmentId("");
-    setGeneratedEmail(""); setDefaultEmail(""); setCustomEmail(""); setUseCustomEmail(false);
     setOtpInput(""); setConfirmation(null);
   };
 
