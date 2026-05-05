@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Camera, GraduationCap, Hash, Loader2, LogOut, ShieldCheck, Sparkles, Target } from "lucide-react";
+import { ArrowLeft, Camera, GraduationCap, Hash, Loader2, LogOut, ShieldCheck, Sparkles, Target, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { InterestChip } from "@/components/campus/InterestChip";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,6 +27,21 @@ const StudentProfile = () => {
 
   const handleLogout = async () => {
     await signOut();
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm("Remove this account from the app on this device? Your data stays in the database.")) return;
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      try {
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith("sb-") || k.includes("supabase"))
+          .forEach((k) => localStorage.removeItem(k));
+      } catch {}
+      toast.success("Account removed from this app");
+      window.location.href = "/";
+    }
   };
 
   const initials = (profile.name || "?").split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
@@ -130,6 +145,16 @@ const StudentProfile = () => {
           >
             <LogOut className="h-4 w-4" /> Log out
           </button>
+
+          <button
+            onClick={handleDeleteAccount}
+            className="mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-destructive/40 text-destructive font-semibold text-sm hover:bg-destructive/10 transition-smooth"
+          >
+            <Trash2 className="h-4 w-4" /> Delete account from app
+          </button>
+          <p className="text-[11px] text-muted-foreground text-center mt-2">
+            This removes the account locally only. Your records remain in the college database.
+          </p>
         </div>
       </div>
     </div>
