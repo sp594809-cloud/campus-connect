@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import networkBg from "@/assets/network-bg.jpg";
 import { uploadAttachment, detectKind } from "@/lib/uploads";
+import { YearDashboard } from "../YearDashboard";
 
 interface FeedPost {
   id: string;
@@ -128,6 +129,10 @@ export const HomeScreen = () => {
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="px-5 mt-4">
+        <YearDashboard />
       </div>
 
       <div className="px-5 mt-5 flex gap-2 overflow-x-auto scrollbar-hide">

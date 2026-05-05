@@ -239,6 +239,57 @@ export type Database = {
           },
         ]
       }
+      dsa_completions: {
+        Row: {
+          completed_on: string
+          created_at: string
+          id: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_on?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_on?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dsa_streaks: {
+        Row: {
+          current_streak: number
+          last_completed_date: string | null
+          longest_streak: number
+          total_completed: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          current_streak?: number
+          last_completed_date?: string | null
+          longest_streak?: number
+          total_completed?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          current_streak?: number
+          last_completed_date?: string | null
+          longest_streak?: number
+          total_completed?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       event_rsvps: {
         Row: {
           created_at: string
@@ -965,6 +1016,7 @@ export type Database = {
         | "daily_streak"
         | "resume_review"
         | "mock_interview"
+        | "aspire_engage"
       mentorship_status: "pending" | "accepted" | "declined"
       placement_status: "Placed" | "Looking" | "Interning" | "N/A"
       post_type: "update" | "question" | "achievement" | "resource"
@@ -1131,6 +1183,7 @@ export const Constants = {
         "daily_streak",
         "resume_review",
         "mock_interview",
+        "aspire_engage",
       ],
       mentorship_status: ["pending", "accepted", "declined"],
       placement_status: ["Placed", "Looking", "Interning", "N/A"],

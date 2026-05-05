@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export interface Profile {
   id: string;
@@ -68,6 +69,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Notify when a senior earns Legacy karma (e.g. their advice helped a junior)
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase
+      .channel(`karma-${user.id}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "karma_events", filter: `user_id=eq.${user.id}` }, (payload) => {
+        const e: any = payload.new;
+        if (e.action === "advice_upvoted") toast.success(`Your advice helped a junior! +${e.points} Legacy points`);
+        else if (e.action === "interview_post") toast.success(`Interview shared! +${e.points} Legacy points`);
+        else if (e.action === "aspire_engage") toast(`+${e.points} Aspire points 🌱`);
+        loadProfile(user.id);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user?.id]);
 
   return (
     <Ctx.Provider
