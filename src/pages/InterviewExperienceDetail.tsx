@@ -51,7 +51,13 @@ const InterviewExperienceDetail = () => {
   }, [id]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
-  if (!exp) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Not found.</div>;
+  if (!exp) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3 p-6 text-center">
+      <p className="text-base font-semibold">This experience couldn't be loaded.</p>
+      <p className="text-sm text-muted-foreground">It may have been removed or you don't have access.</p>
+      <button onClick={() => nav("/interview")} className="mt-2 px-4 py-2 rounded-xl bg-foreground text-background text-sm font-bold">Back to Placement Hub</button>
+    </div>
+  );
 
   const cat = COMPANY_CATEGORIES.find((c) => c.id === exp.company_category);
   const outcomeMap: Record<string, string> = { selected: "bg-success/15 text-success", rejected: "bg-destructive/15 text-destructive", waitlisted: "bg-secondary text-secondary-foreground", withdrew: "bg-muted text-muted-foreground" };
