@@ -17,7 +17,11 @@ const ACTION_LABEL: Record<string, string> = {
   daily_streak: "Daily streak",
   resume_review: "Resume review given",
   mock_interview: "Mock interview",
+  aspire_engage: "Engaged with senior content",
 };
+
+// Aspire = junior side (learning, engaging). Legacy = senior side (helping others).
+const LEGACY_ACTIONS = new Set(["interview_post", "mentorship_completed", "advice_upvoted", "resume_review", "mock_interview"]);
 
 const Karma = () => {
   const nav = useNavigate();
