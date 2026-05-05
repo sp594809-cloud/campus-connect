@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Camera, GraduationCap, Hash, Loader2, LogOut, ShieldCheck, Sparkles, Target, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Award, Camera, GraduationCap, Hash, Loader2, LogOut, ShieldCheck, Sparkles, Target, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { InterestChip } from "@/components/campus/InterestChip";
 import { useAuth } from "@/contexts/AuthContext";
@@ -141,6 +141,15 @@ const StudentProfile = () => {
               </div>
             </div>
           )}
+
+          <button onClick={() => navigate("/karma")} className="mt-4 w-full rounded-2xl border border-accent/40 bg-accent-soft p-4 flex items-center gap-3 hover:bg-accent-soft/70 transition-smooth">
+            <Award className="h-5 w-5 text-accent" />
+            <div className="flex-1 text-left">
+              <p className="font-bold text-sm">Placement Karma</p>
+              <p className="text-[11px] text-muted-foreground">{profile.karma_total ?? 0} pts · view badges & leaderboard</p>
+            </div>
+            <span className="text-lg font-black text-accent">{profile.karma_total ?? 0}</span>
+          </button>
 
           <div className="mt-5 rounded-2xl border border-border bg-card p-4">
             <div className="flex items-center gap-2 text-sm font-semibold">
