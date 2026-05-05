@@ -23,6 +23,7 @@ export interface Profile {
   weekly_capacity: number;
   mentor_bio: string | null;
   mentor_topics: string[];
+  karma_total: number;
 }
 
 interface AuthCtx {
