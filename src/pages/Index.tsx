@@ -299,6 +299,49 @@ const StudentRegistrationForm = () => {
               </div>
             )}
 
+            {step === "method" && (
+              <div className="space-y-4">
+                <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-green-700 font-medium">
+                    Hi {fullName.split(" ")[0]}! How would you like to verify?
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className={`flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${method === "email" ? "border-indigo-500 bg-indigo-50" : "border-gray-200"}`}>
+                    <input type="radio" name="verify-method" checked={method === "email"} onChange={() => setMethod("email")} className="mt-1" />
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Mail className="h-4 w-4" /> Email verification</div>
+                      <div className="text-xs text-gray-600">Receive a 6-digit code by email</div>
+                    </div>
+                  </label>
+                  <label className={`flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${method === "sms" ? "border-indigo-500 bg-indigo-50" : "border-gray-200"}`}>
+                    <input type="radio" name="verify-method" checked={method === "sms"} onChange={() => setMethod("sms")} className="mt-1" />
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Phone className="h-4 w-4" /> Mobile OTP (SMS)</div>
+                      <div className="text-xs text-gray-600">Receive an SMS code at +91{phoneNumber}</div>
+                    </div>
+                  </label>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (method === "email") { setStep("email"); return; }
+                    setIsLoading(true);
+                    const ok = await sendSmsOtp();
+                    setIsLoading(false);
+                    if (ok) { setOtpInput(""); setStep("otp"); }
+                  }}
+                  disabled={isLoading}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                >
+                  {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Sending…</> : "Continue"}
+                </button>
+                <button type="button" onClick={() => setStep("phone")} className="w-full text-xs font-semibold text-gray-500 hover:text-gray-700">
+                  ← Change phone number
+                </button>
+              </div>
+            )}
+
             {step === "email" && (
               <div className="space-y-4">
                 <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -416,6 +459,7 @@ const StudentRegistrationForm = () => {
         </div>
 
         <p className="text-center text-sm text-gray-500 mt-4">Need help? Contact your college administration</p>
+        <div id="recaptcha-container" />
       </div>
     </div>
   );
