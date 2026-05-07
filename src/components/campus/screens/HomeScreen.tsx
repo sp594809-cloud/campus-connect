@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import networkBg from "@/assets/network-bg.jpg";
 import { uploadAttachment, detectKind } from "@/lib/uploads";
+import { StreakBanner } from "../StreakBanner";
 
 interface FeedPost {
   id: string;
@@ -104,6 +105,10 @@ export const HomeScreen = () => {
   return (
     <div className="animate-fade-in-up">
       <Header title="Campus Feed" subtitle="What's happening today" showSearch />
+
+      <div className="px-5 pt-4">
+        <StreakBanner />
+      </div>
 
       <div className="px-5 pt-4">
         <div
