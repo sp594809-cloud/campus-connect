@@ -119,7 +119,20 @@ export const MarketplaceScreen = () => {
       </div>
 
       <div className="px-5 mt-4 space-y-3 pb-24">
-        {loading && <p className="text-center text-sm text-muted-foreground py-8">Loading…</p>}
+        {loading && (
+          <div className="space-y-3" aria-label="Loading listings">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-2xl glass-card p-4 flex gap-3 shadow-soft">
+                <div className="h-20 w-20 rounded-xl bg-muted animate-pulse" />
+                <div className="flex-1 space-y-2 py-1">
+                  <div className="h-3.5 w-2/3 rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-1/2 rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-3/4 rounded bg-muted animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         {!loading && items.length === 0 && (
           <div className="text-center py-12">
             <ShoppingBag className="mx-auto h-10 w-10 text-muted-foreground" />
@@ -128,7 +141,7 @@ export const MarketplaceScreen = () => {
           </div>
         )}
         {items.map((it) => (
-          <article key={it.id} className="relative rounded-2xl bg-card p-4 shadow-soft border border-border/60 flex gap-3">
+          <article key={it.id} className="relative rounded-2xl glass-card p-4 shadow-soft flex gap-3">
             {(() => {
               const ageMin = (Date.now() - new Date(it.created_at).getTime()) / 60000;
               if (ageMin < 60) return (

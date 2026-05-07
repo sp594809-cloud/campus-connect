@@ -105,10 +105,12 @@ const StudentRegistrationForm = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
-            <h1 className="text-2xl font-bold text-white">Sign in to Campus Connect</h1>
-            <p className="text-indigo-100 text-sm mt-1">
-              {student ? "Confirm your details to continue" : "Enter your registered phone number"}
+          <div className="bg-gradient-hero px-8 py-8">
+            <h1 className="text-3xl font-extrabold text-white leading-tight tracking-tight" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
+              Your Campus.<br />Your Network.<br />Your Opportunities.
+            </h1>
+            <p className="text-indigo-100 text-sm mt-3">
+              {student ? "Confirm your details to continue" : "Sign in with your registered phone number"}
             </p>
           </div>
 
