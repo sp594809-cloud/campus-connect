@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import networkBg from "@/assets/network-bg.jpg";
 import { uploadAttachment, detectKind } from "@/lib/uploads";
-import { YearDashboard } from "../YearDashboard";
 
 interface FeedPost {
   id: string;
