@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Briefcase, Heart, MessageCircle, Pin, Plus, Send, Share2, Sparkles, X, Paperclip, FileText } from "lucide-react";
+import { Briefcase, Heart, MessageCircle, MoreHorizontal, Pencil, Pin, Plus, Send, Share2, Sparkles, Trash2, X, Paperclip, FileText } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,7 @@ import { formatDistanceToNow } from "date-fns";
 import networkBg from "@/assets/network-bg.jpg";
 import { uploadAttachment, detectKind } from "@/lib/uploads";
 import { StreakBanner } from "../StreakBanner";
+import { ConfirmDialog } from "../ConfirmDialog";
 
 interface FeedPost {
   id: string;
@@ -41,6 +42,11 @@ export const HomeScreen = () => {
   const [attachment, setAttachment] = useState<{ url: string; type: "image" | "pdf" } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [openComments, setOpenComments] = useState<string | null>(null);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [editing, setEditing] = useState<FeedPost | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<FeedPost | null>(null);
+  const [working, setWorking] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -74,10 +80,15 @@ export const HomeScreen = () => {
   };
 
   const submitPost = async () => {
-    if (!user || (!draft.trim() && !attachment)) return;
+    if (!user) return;
+    const trimmed = draft.trim();
+    if (trimmed.length < 10 && !attachment) {
+      toast.error("Post needs at least 10 characters");
+      return;
+    }
     const { error } = await supabase.from("posts").insert({
       author_id: user.id,
-      content: draft.trim().slice(0, 500) || "",
+      content: trimmed.slice(0, 500),
       tag: tag.trim().slice(0, 30) || null,
       type: "update",
       attachment_url: attachment?.url ?? null,
@@ -100,6 +111,30 @@ export const HomeScreen = () => {
       if (r) setAttachment(r);
     } catch (err: any) { toast.error(err.message ?? "Upload failed"); }
     finally { setUploading(false); }
+  };
+
+  const saveEdit = async () => {
+    if (!editing || !user) return;
+    const trimmed = editDraft.trim();
+    if (trimmed.length < 10) { toast.error("Post needs at least 10 characters"); return; }
+    setWorking(true);
+    const { error } = await supabase.from("posts").update({ content: trimmed.slice(0, 500) }).eq("id", editing.id);
+    setWorking(false);
+    if (error) return toast.error(error.message);
+    toast.success("Post updated");
+    setEditing(null);
+    load();
+  };
+
+  const deletePost = async () => {
+    if (!confirmDelete) return;
+    setWorking(true);
+    const { error } = await supabase.from("posts").delete().eq("id", confirmDelete.id);
+    setWorking(false);
+    if (error) return toast.error(error.message);
+    setPosts((p) => p.filter((x) => x.id !== confirmDelete.id));
+    setConfirmDelete(null);
+    toast.success("Post deleted");
   };
 
   return (
@@ -191,6 +226,40 @@ export const HomeScreen = () => {
                   </p>
                 </div>
                 {post.tag && <span className="text-[10px] font-bold uppercase tracking-wider bg-accent-soft text-accent px-2 py-1 rounded-full">{post.tag}</span>}
+                {post.author_id === user?.id && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setMenuFor((m) => (m === post.id ? null : post.id))}
+                      aria-label="Post options"
+                      className="h-8 w-8 rounded-full hover:bg-secondary flex items-center justify-center"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </button>
+                    {menuFor === post.id && (
+                      <>
+                        <button
+                          aria-label="Close menu"
+                          className="fixed inset-0 z-10 cursor-default"
+                          onClick={() => setMenuFor(null)}
+                        />
+                        <div className="absolute right-0 top-9 z-20 w-40 glass-card rounded-2xl shadow-elevated overflow-hidden animate-scale-in">
+                          <button
+                            onClick={() => { setEditing(post); setEditDraft(post.content); setMenuFor(null); }}
+                            className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium hover:bg-secondary/60 text-left"
+                          >
+                            <Pencil className="h-4 w-4" /> Edit post
+                          </button>
+                          <button
+                            onClick={() => { setConfirmDelete(post); setMenuFor(null); }}
+                            className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-bold hover:bg-destructive/10 text-destructive text-left border-t border-border/50"
+                          >
+                            <Trash2 className="h-4 w-4" /> Delete post
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               <p className="mt-3 text-[15px] leading-relaxed text-foreground whitespace-pre-wrap">{post.content}</p>
               {post.attachment_url && post.attachment_type === "image" && (
@@ -220,6 +289,41 @@ export const HomeScreen = () => {
 
       {openComments && <CommentsSheet postId={openComments} onClose={() => { setOpenComments(null); load(); }} />}
 
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Delete this post?"
+        description="This action is permanent. Your post and its likes & comments will be removed."
+        confirmLabel="Delete post"
+        destructive
+        busy={working}
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={deletePost}
+      />
+
+      {editing && (
+        <div className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-fade-in-up" onClick={() => setEditing(null)}>
+          <div className="glass-card rounded-3xl p-5 w-full max-w-md shadow-elevated animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold">Edit post</h3>
+              <button onClick={() => setEditing(null)} aria-label="Close" className="h-8 w-8 rounded-full hover:bg-secondary/60 flex items-center justify-center"><X className="h-4 w-4" /></button>
+            </div>
+            <textarea value={editDraft} onChange={(e) => setEditDraft(e.target.value.slice(0, 500))} rows={5} className="w-full px-4 py-3 rounded-2xl bg-secondary/70 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
+            <div className="flex items-center justify-between mt-2">
+              <span className={cn("text-[11px]", editDraft.trim().length < 10 ? "text-destructive font-semibold" : "text-muted-foreground")}>
+                {editDraft.trim().length < 10 ? `${10 - editDraft.trim().length} more chars needed` : `${editDraft.length}/500`}
+              </span>
+              <button
+                onClick={saveEdit}
+                disabled={working || editDraft.trim().length < 10}
+                className="px-5 py-2.5 rounded-2xl bg-gradient-cta text-white font-bold text-sm shadow-glow disabled:opacity-40 disabled:bg-none disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
+              >
+                {working ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showCompose && (
         <div className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 overflow-y-auto animate-fade-in-up" onClick={() => setShowCompose(false)}>
           <div className="bg-card rounded-3xl p-5 w-full max-w-md shadow-elevated animate-scale-in my-auto max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -247,9 +351,24 @@ export const HomeScreen = () => {
               <button onClick={() => fileRef.current?.click()} disabled={uploading} aria-label="Attach" className="h-12 w-12 rounded-2xl bg-secondary flex items-center justify-center disabled:opacity-50">
                 <Paperclip className="h-5 w-5" />
               </button>
-              <button onClick={submitPost} disabled={(!draft.trim() && !attachment) || uploading} className="flex-1 py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50 flex items-center justify-center gap-2">
-                <Send className="h-4 w-4" /> {uploading ? "Uploading…" : "Post"}
-              </button>
+              {(() => {
+                const tooShort = draft.trim().length < 10 && !attachment;
+                return (
+                  <button
+                    onClick={submitPost}
+                    disabled={tooShort || uploading}
+                    className={cn(
+                      "flex-1 py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-smooth",
+                      tooShort
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : "bg-gradient-cta text-white shadow-glow"
+                    )}
+                  >
+                    <Send className="h-4 w-4" />
+                    {uploading ? "Uploading…" : tooShort ? `Type ${Math.max(0, 10 - draft.trim().length)} more chars` : "Post"}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>
