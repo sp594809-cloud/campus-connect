@@ -8,48 +8,60 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 220 30% 98%;
-    --foreground: 230 35% 12%;
+    /* 60% — Soft Pearl White / Alabaster (dominant surface) */
+    --background: 30 25% 98%;
+    --foreground: 222 45% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 230 35% 12%;
+    --card-foreground: 222 45% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 230 35% 12%;
+    --popover-foreground: 222 45% 12%;
 
-    --primary: 234 70% 32%;
-    --primary-foreground: 220 30% 98%;
-    --primary-glow: 244 80% 60%;
+    /* 30% — Professional Navy Blue (trust, placement, groups) */
+    --primary: 222 60% 18%;
+    --primary-foreground: 30 25% 98%;
+    --primary-glow: 270 90% 60%;
 
-    --secondary: 230 25% 95%;
-    --secondary-foreground: 234 60% 22%;
+    --secondary: 222 30% 94%;
+    --secondary-foreground: 222 60% 18%;
 
-    --muted: 225 25% 95%;
-    --muted-foreground: 230 15% 45%;
+    --muted: 222 20% 95%;
+    --muted-foreground: 222 15% 40%;
 
-    --accent: 14 95% 58%;
+    /* 10% — Vibrant Electric Purple (CTA, streaks, success bursts) */
+    --accent: 270 90% 60%;
     --accent-foreground: 0 0% 100%;
-    --accent-soft: 14 95% 96%;
+    --accent-soft: 270 90% 96%;
 
-    --success: 158 70% 42%;
+    /* Semantic — Success Green (streak kept) */
+    --success: 152 68% 38%;
     --success-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    /* Semantic — Urgency Red (streak loss / loss aversion) */
+    --destructive: 0 78% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 230 25% 90%;
-    --input: 230 25% 90%;
-    --ring: 244 80% 60%;
+    /* Safety Orange — marketplace social proof / scarcity */
+    --warning: 22 100% 52%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 222 20% 88%;
+    --input: 222 20% 88%;
+    --ring: 270 90% 60%;
 
     --radius: 1rem;
 
-    --gradient-hero: linear-gradient(135deg, hsl(232 80% 18%) 0%, hsl(252 85% 38%) 50%, hsl(272 95% 60%) 100%);
-    --gradient-card: linear-gradient(160deg, hsl(244 80% 60% / 0.08), hsl(14 95% 58% / 0.04));
-    --gradient-accent: linear-gradient(135deg, hsl(14 95% 60%), hsl(28 95% 58%));
+    /* Midnight Navy → Electric Purple */
+    --gradient-hero: linear-gradient(135deg, hsl(222 70% 12%) 0%, hsl(248 70% 28%) 50%, hsl(270 95% 60%) 100%);
+    --gradient-card: linear-gradient(160deg, hsl(270 90% 60% / 0.08), hsl(222 60% 18% / 0.04));
+    --gradient-accent: linear-gradient(135deg, hsl(270 95% 62%), hsl(285 95% 58%));
+    --gradient-cta: linear-gradient(135deg, hsl(260 95% 55%), hsl(280 95% 62%));
+    --gradient-warning: linear-gradient(135deg, hsl(22 100% 52%), hsl(32 100% 55%));
 
-    --shadow-soft: 0 4px 16px -6px hsl(234 60% 30% / 0.10), 0 2px 4px -2px hsl(234 60% 30% / 0.06);
-    --shadow-elevated: 0 20px 50px -20px hsl(234 60% 30% / 0.25);
-    --shadow-glow: 0 0 0 1px hsl(244 80% 60% / 0.15), 0 12px 40px -8px hsl(244 80% 60% / 0.35);
+    --shadow-soft: 0 4px 16px -6px hsl(222 60% 18% / 0.10), 0 2px 4px -2px hsl(222 60% 18% / 0.06);
+    --shadow-elevated: 0 20px 50px -20px hsl(222 60% 18% / 0.25);
+    --shadow-glow: 0 0 0 1px hsl(270 90% 60% / 0.18), 0 12px 40px -8px hsl(270 90% 60% / 0.40);
 
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -71,33 +83,39 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 234 35% 8%;
-    --foreground: 220 30% 96%;
+    --background: 222 45% 7%;
+    --foreground: 30 25% 96%;
 
-    --card: 234 30% 12%;
-    --card-foreground: 220 30% 96%;
+    --card: 222 40% 11%;
+    --card-foreground: 30 25% 96%;
 
-    --popover: 234 30% 12%;
-    --popover-foreground: 220 30% 96%;
+    --popover: 222 40% 11%;
+    --popover-foreground: 30 25% 96%;
 
-    --primary: 244 80% 65%;
-    --primary-foreground: 234 35% 8%;
+    --primary: 270 90% 68%;
+    --primary-foreground: 222 45% 7%;
 
-    --secondary: 234 25% 18%;
-    --secondary-foreground: 220 30% 96%;
+    --secondary: 222 30% 16%;
+    --secondary-foreground: 30 25% 96%;
 
-    --muted: 234 25% 18%;
-    --muted-foreground: 230 15% 65%;
+    --muted: 222 30% 16%;
+    --muted-foreground: 222 15% 70%;
 
-    --accent: 14 95% 58%;
+    --accent: 270 90% 65%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --success: 152 65% 45%;
+    --success-foreground: 0 0% 100%;
 
-    --border: 234 25% 20%;
-    --input: 234 25% 20%;
-    --ring: 244 80% 65%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 22 100% 55%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 222 30% 20%;
+    --input: 222 30% 20%;
+    --ring: 270 90% 65%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -129,6 +147,8 @@ All colors MUST be HSL.
   .bg-gradient-hero { background: var(--gradient-hero); }
   .bg-gradient-card { background: var(--gradient-card); }
   .bg-gradient-accent { background: var(--gradient-accent); }
+  .bg-gradient-cta { background: var(--gradient-cta); }
+  .bg-gradient-warning { background: var(--gradient-warning); }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-elevated { box-shadow: var(--shadow-elevated); }
   .shadow-glow { box-shadow: var(--shadow-glow); }
@@ -136,15 +156,21 @@ All colors MUST be HSL.
   .scrollbar-hide::-webkit-scrollbar { display: none; }
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
   .glass-card {
-    background: hsl(var(--card) / 0.55);
-    backdrop-filter: blur(14px) saturate(140%);
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
-    border: 1px solid hsl(var(--border) / 0.6);
+    background: hsl(var(--card) / 0.65);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid hsl(var(--border) / 0.55);
+    box-shadow: 0 8px 32px -12px hsl(222 60% 18% / 0.18);
   }
   .text-gradient-hero {
     background: var(--gradient-hero);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+  .badge-social-proof {
+    background: var(--gradient-warning);
+    color: hsl(var(--warning-foreground));
+    box-shadow: 0 4px 14px -4px hsl(22 100% 52% / 0.45);
   }
 }
