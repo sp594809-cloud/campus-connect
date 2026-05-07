@@ -8,6 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { uploadAttachment } from "@/lib/uploads";
 import { Eye, Flame, Sparkles } from "lucide-react";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { cn } from "@/lib/utils";
 
 interface Listing {
   id: string;
