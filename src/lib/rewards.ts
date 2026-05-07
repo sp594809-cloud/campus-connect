@@ -6,7 +6,7 @@ const listeners = new Set<Listener>();
 
 export const onReward = (l: Listener) => {
   listeners.add(l);
-  return () => listeners.delete(l);
+  return () => { listeners.delete(l); };
 };
 
 export const emitReward = (points: number, label: string, kind: "aspire" | "legacy" = "aspire") => {
