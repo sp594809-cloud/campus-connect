@@ -59,7 +59,9 @@ export const MarketplaceScreen = () => {
   const submit = async () => {
     if (!user) { toast.error("Sign in to sell"); return; }
     if (!title.trim()) { toast.error("Add a title"); return; }
-    const p = Number(price) || 0;
+    const p = Number(price);
+    if (!price.trim() || isNaN(p) || p <= 0) { toast.error("Enter a valid price"); return; }
+    if (!imageUrl) { toast.error("Upload a product image"); return; }
     setBusy(true);
     const { error } = await supabase.from("marketplace_listings").insert({
       seller_id: user.id,
@@ -152,11 +154,14 @@ export const MarketplaceScreen = () => {
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" maxLength={80} className="w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none mb-2" />
             <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} placeholder="Description" maxLength={500} className="w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none resize-none mb-2" />
             <div className="flex gap-2 mb-2">
-              <input value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="Price (₹)" className="flex-1 px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none" />
+              <input value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="Price ₹ (required)" className="flex-1 px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none" required />
               <select value={category} onChange={(e) => setCategory(e.target.value)} className="px-3 py-3 rounded-2xl bg-secondary text-sm">
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
+            {!imageUrl && (
+              <p className="text-xs text-muted-foreground mb-2">📸 Product image is required. Tap the clip icon to upload.</p>
+            )}
             {imageUrl && (
               <div className="relative mb-2">
                 <img src={imageUrl} alt="" className="rounded-xl max-h-40 w-full object-cover" />
@@ -168,7 +173,7 @@ export const MarketplaceScreen = () => {
               <button onClick={() => fileRef.current?.click()} disabled={uploading} className="h-12 w-12 rounded-2xl bg-secondary flex items-center justify-center disabled:opacity-50">
                 <Paperclip className="h-5 w-5" />
               </button>
-              <button onClick={submit} disabled={busy || uploading || !title.trim()} className="flex-1 py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50 flex items-center justify-center gap-2">
+              <button onClick={submit} disabled={busy || uploading || !title.trim() || !price.trim() || !imageUrl} className="flex-1 py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50 flex items-center justify-center gap-2">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "List for sale"}
               </button>
             </div>
