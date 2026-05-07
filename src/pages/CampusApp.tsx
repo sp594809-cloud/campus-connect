@@ -10,6 +10,8 @@ import { CommunitiesScreen } from "@/components/campus/screens/CommunitiesScreen
 import { EventsScreen } from "@/components/campus/screens/EventsScreen";
 import { MessagesScreen } from "@/components/campus/screens/MessagesScreen";
 import { MarketplaceScreen } from "@/components/campus/screens/MarketplaceScreen";
+import { RewardLayer } from "@/components/campus/RewardLayer";
+import { TierPill } from "@/components/campus/TierPill";
 
 const CampusApp = () => {
   const navigate = useNavigate();
@@ -43,6 +45,7 @@ const CampusApp = () => {
     <PhoneShell>
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/60 px-4 py-2 flex items-center gap-2">
         <p className="text-sm font-bold flex-1">Hi, {name.split(" ")[0]} 👋</p>
+        <TierPill />
         <button
           onClick={() => navigate("/me")}
           aria-label="Open profile"
@@ -51,6 +54,7 @@ const CampusApp = () => {
           {initials || <User className="h-4 w-4" />}
         </button>
       </div>
+      <RewardLayer />
       {tab === "home" && <HomeScreen />}
       {tab === "discover" && <DiscoverScreen onMessage={goMessage} />}
       {tab === "communities" && <CommunitiesScreen />}
