@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Briefcase, Heart, MessageCircle, MoreHorizontal, Pencil, Pin, Plus, Send, Share2, Sparkles, Trash2, X, Paperclip, FileText } from "lucide-react";
+import { Briefcase, Hash, Heart, MessageCircle, MoreHorizontal, Pencil, Pin, Plus, Search, Send, Share2, Sparkles, Trash2, User, X, Paperclip, FileText } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import networkBg from "@/assets/network-bg.jpg";
 import { uploadAttachment, detectKind } from "@/lib/uploads";
 import { StreakBanner } from "../StreakBanner";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { ShareDrawer } from "../ShareDrawer";
 
 interface FeedPost {
   id: string;
@@ -29,6 +30,8 @@ interface FeedPost {
 }
 
 const filters = ["All Campus", "My Branch", "My Interests"] as const;
+const CATEGORIES = ["All", "Placement", "Exams", "Social", "DSA", "Internship", "Hackathon", "Project"] as const;
+type SearchMode = "name" | "enrollment";
 
 export const HomeScreen = () => {
   const { user, profile } = useAuth();
@@ -47,6 +50,12 @@ export const HomeScreen = () => {
   const [editDraft, setEditDraft] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<FeedPost | null>(null);
   const [working, setWorking] = useState(false);
+  const [searchMode, setSearchMode] = useState<SearchMode>("name");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [enrollmentMatchName, setEnrollmentMatchName] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<typeof CATEGORIES[number]>("All");
+  const [sharePost, setSharePost] = useState<FeedPost | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -62,9 +71,37 @@ export const HomeScreen = () => {
 
   useEffect(() => { load(); }, []);
 
+  // Enrollment lookup → resolve to a full name then match author
+  useEffect(() => {
+    if (searchMode !== "enrollment" || !searchTerm.trim()) { setEnrollmentMatchName(null); return; }
+    let alive = true;
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from("student1")
+        .select("full_name,enrollment_id")
+        .ilike("enrollment_id", `%${searchTerm.trim()}%`)
+        .limit(1)
+        .maybeSingle();
+      if (alive) setEnrollmentMatchName((data as any)?.full_name ?? null);
+    }, 250);
+    return () => { alive = false; clearTimeout(t); };
+  }, [searchMode, searchTerm]);
+
   const filtered = posts.filter((p) => {
-    if (filter === "My Branch") return p.author?.branch && profile?.branch && p.author.branch === profile.branch;
-    if (filter === "My Interests") return true; // tag-based filter could be richer
+    if (filter === "My Branch" && !(p.author?.branch && profile?.branch && p.author.branch === profile.branch)) return false;
+    if (activeCategory !== "All") {
+      const haystack = `${p.tag ?? ""} ${p.content}`.toLowerCase();
+      if (!haystack.includes(activeCategory.toLowerCase())) return false;
+    }
+    const q = searchTerm.trim().toLowerCase();
+    if (q) {
+      if (searchMode === "name") {
+        if (!(p.author?.name ?? "").toLowerCase().includes(q)) return false;
+      } else {
+        if (!enrollmentMatchName) return false;
+        if ((p.author?.name ?? "").toLowerCase() !== enrollmentMatchName.toLowerCase()) return false;
+      }
+    }
     return true;
   });
 
@@ -150,6 +187,74 @@ export const HomeScreen = () => {
 
       <div className="px-5 pt-4">
         <StreakBanner />
+      </div>
+
+      {/* Advanced search */}
+      <div className="px-5 pt-4">
+        <div
+          className={cn(
+            "flex items-center gap-2 rounded-2xl glass-card px-3 py-2 transition-smooth",
+            searchFocused && "ring-2 ring-primary shadow-[0_0_0_4px_hsl(222_60%_18%/0.18)]"
+          )}
+        >
+          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+          <input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            placeholder={searchMode === "name" ? "Search by student name…" : "Search by enrollment number…"}
+            maxLength={60}
+            className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground"
+            aria-label="Search feed"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm("")} aria-label="Clear" className="h-6 w-6 rounded-full hover:bg-secondary/60 flex items-center justify-center">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <div className="flex items-center rounded-xl bg-secondary/70 p-0.5 shrink-0">
+            {(["name", "enrollment"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setSearchMode(m)}
+                className={cn(
+                  "px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-smooth inline-flex items-center gap-1",
+                  searchMode === m ? "bg-primary text-primary-foreground shadow-soft" : "text-muted-foreground"
+                )}
+              >
+                {m === "name" ? <User className="h-3 w-3" /> : <Hash className="h-3 w-3" />}
+                {m === "name" ? "Name" : "Enr."}
+              </button>
+            ))}
+          </div>
+        </div>
+        {searchMode === "enrollment" && searchTerm.trim() && (
+          <p className="text-[11px] text-muted-foreground mt-1.5 ml-1">
+            {enrollmentMatchName ? <>Matches <b className="text-foreground">{enrollmentMatchName}</b></> : "No student found for this enrollment"}
+          </p>
+        )}
+      </div>
+
+      {/* Category tags */}
+      <div className="px-5 pt-3 flex gap-2 overflow-x-auto scrollbar-hide">
+        {CATEGORIES.map((c) => {
+          const isActive = activeCategory === c;
+          return (
+            <button
+              key={c}
+              onClick={() => setActiveCategory(c)}
+              className={cn(
+                "shrink-0 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-smooth border",
+                isActive
+                  ? "bg-gradient-cta text-white border-transparent shadow-glow"
+                  : "bg-secondary/60 text-muted-foreground border-border hover:text-foreground"
+              )}
+            >
+              {c === "All" ? c : `#${c}`}
+            </button>
+          );
+        })}
       </div>
 
       <div className="px-5 pt-4">
@@ -292,7 +397,7 @@ export const HomeScreen = () => {
                 <button onClick={() => setOpenComments(post.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-secondary transition-smooth">
                   <MessageCircle className="h-4 w-4" /> {post.comments?.[0]?.count ?? 0}
                 </button>
-                <button className="ml-auto p-1.5 rounded-full hover:bg-secondary transition-smooth" aria-label="Share"><Share2 className="h-4 w-4" /></button>
+                <button onClick={() => setSharePost(post)} className="ml-auto p-1.5 rounded-full hover:bg-secondary transition-smooth" aria-label="Share"><Share2 className="h-4 w-4" /></button>
               </div>
             </article>
           );
@@ -300,6 +405,14 @@ export const HomeScreen = () => {
       </div>
 
       {openComments && <CommentsSheet postId={openComments} onClose={() => { setOpenComments(null); load(); }} />}
+
+      <ShareDrawer
+        open={!!sharePost}
+        onClose={() => setSharePost(null)}
+        title={sharePost ? `${sharePost.author?.name ?? "Someone"} on Campus Connect` : ""}
+        preview={sharePost?.content?.slice(0, 140)}
+        url={typeof window !== "undefined" && sharePost ? `${window.location.origin}/campus#post-${sharePost.id}` : ""}
+      />
 
       <ConfirmDialog
         open={!!confirmDelete}
