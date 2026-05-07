@@ -40,5 +40,12 @@ export const useProfiles = (excludeId?: string) => {
   return { profiles, loading };
 };
 
+// Brand-consistent avatar: Midnight Navy → Electric Purple gradient, Pearl White initials.
 export const avatarFor = (p: { avatar_url: string | null; name: string }) =>
-  p.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(p.name)}&backgroundType=gradientLinear&backgroundColor=4f46e5,f97316`;
+  p.avatar_url ||
+  `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(p.name)}` +
+    `&backgroundType=gradientLinear` +
+    `&backgroundColor=0a1a4d,a020f0` +
+    `&backgroundRotation=135` +
+    `&textColor=fafafa` +
+    `&fontWeight=700`;
