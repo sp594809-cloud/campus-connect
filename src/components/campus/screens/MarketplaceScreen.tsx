@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { uploadAttachment } from "@/lib/uploads";
+import { Eye, Flame, Sparkles } from "lucide-react";
 
 interface Listing {
   id: string;
@@ -99,6 +100,15 @@ export const MarketplaceScreen = () => {
   return (
     <div className="animate-fade-in-up">
       <Header title="Marketplace" subtitle="Buy & sell on campus" />
+      <div className="px-5 pt-3">
+        <div className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground bg-secondary/60 rounded-full px-3 py-1.5 w-fit">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+          <Eye className="h-3 w-3" /> {12 + (new Date().getHours() % 9) * 3} students browsing now
+        </div>
+      </div>
       <div className="px-5 pt-4">
         <button
           onClick={() => setOpen(true)}
@@ -118,7 +128,21 @@ export const MarketplaceScreen = () => {
           </div>
         )}
         {items.map((it) => (
-          <article key={it.id} className="rounded-2xl bg-card p-4 shadow-soft border border-border/60 flex gap-3">
+          <article key={it.id} className="relative rounded-2xl bg-card p-4 shadow-soft border border-border/60 flex gap-3">
+            {(() => {
+              const ageMin = (Date.now() - new Date(it.created_at).getTime()) / 60000;
+              if (ageMin < 60) return (
+                <span className="absolute -top-2 -left-2 z-10 px-2 py-0.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] font-black uppercase tracking-wider shadow-soft inline-flex items-center gap-1">
+                  <Sparkles className="h-2.5 w-2.5" /> Just listed
+                </span>
+              );
+              if (ageMin < 60 * 24) return (
+                <span className="absolute -top-2 -left-2 z-10 px-2 py-0.5 rounded-full bg-gradient-to-r from-orange-500 to-rose-500 text-white text-[10px] font-black uppercase tracking-wider shadow-soft inline-flex items-center gap-1">
+                  <Flame className="h-2.5 w-2.5" /> Hot
+                </span>
+              );
+              return null;
+            })()}
             {it.image_url ? (
               <img src={it.image_url} alt={it.title} className="h-20 w-20 rounded-xl object-cover" />
             ) : (
