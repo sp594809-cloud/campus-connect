@@ -213,6 +213,8 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
   const [adminsOnly, setAdminsOnly] = useState(!!community.admins_only);
   const [uploading, setUploading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isAdmin = community.created_by === user?.id;
@@ -272,6 +274,22 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
     const { error } = await supabase.from("communities").update({ admins_only: next }).eq("id", community.id);
     if (error) { toast.error(error.message); setAdminsOnly(!next); }
     else toast.success(next ? "Only admins can send" : "All members can send");
+  };
+
+  const leaveGroup = async () => {
+    if (!user) return;
+    setLeaving(true);
+    const { error } = await supabase
+      .from("community_members")
+      .delete()
+      .eq("community_id", community.id)
+      .eq("user_id", user.id);
+    setLeaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Left ${community.name}`);
+    setConfirmLeave(false);
+    setShowSettings(false);
+    onBack();
   };
 
   return (
@@ -353,9 +371,28 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
                 <div className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-background shadow-soft transition-transform", adminsOnly ? "translate-x-5" : "translate-x-0.5")} />
               </div>
             </button>
+            {!isAdmin && (
+              <button
+                onClick={() => setConfirmLeave(true)}
+                className="mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-border bg-background text-sm font-semibold text-muted-foreground hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive transition-smooth"
+              >
+                <LogOut className="h-4 w-4" /> Leave group
+              </button>
+            )}
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmLeave}
+        title={`Leave ${community.name}?`}
+        description="You'll stop receiving messages from this group. You can rejoin anytime."
+        confirmLabel="Leave group"
+        destructive
+        busy={leaving}
+        onCancel={() => setConfirmLeave(false)}
+        onConfirm={leaveGroup}
+      />
     </div>
   );
 };
