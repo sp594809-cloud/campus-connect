@@ -47,10 +47,16 @@ export const StreakBanner = () => {
 
   // Loss-aversion framing
   const tone =
-    doneToday ? "from-emerald-500 to-teal-500" :
-    atRisk    ? "from-amber-500 to-rose-500" :
+    doneToday ? "from-[hsl(var(--success))] to-[hsl(152_60%_30%)]" :
+    atRisk    ? "from-[hsl(var(--destructive))] to-[hsl(var(--warning))]" :
     broken    ? "from-slate-500 to-slate-700" :
-                "from-orange-500 to-red-500";
+                "from-[hsl(var(--warning))] to-[hsl(var(--destructive))]";
+
+  const glow =
+    doneToday ? "glow-success" :
+    atRisk    ? "glow-danger" :
+    broken    ? "" :
+                "glow-warning";
 
   const headline =
     doneToday ? "Streak safe today ✅" :
@@ -65,7 +71,7 @@ export const StreakBanner = () => {
                 "One question a day keeps the rust away.";
 
   return (
-    <div className={cn("rounded-2xl p-4 text-white shadow-soft bg-gradient-to-r flex items-center gap-3 animate-fade-in-up", tone)}>
+    <div className={cn("rounded-2xl p-4 text-white bg-gradient-to-r flex items-center gap-3 animate-fade-in-up", tone, glow)}>
       <div className={cn("h-12 w-12 rounded-full bg-white/15 flex items-center justify-center text-2xl", !doneToday && "animate-flame-flicker")}>
         🔥
       </div>
