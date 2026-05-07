@@ -96,7 +96,14 @@ export const HomeScreen = () => {
     });
     if (error) return toast.error(error.message);
     setDraft(""); setTag(""); setAttachment(null); setShowCompose(false);
-    toast.success("Posted!");
+    toast.success("Post published 🎉", {
+      description: "Your update is live on the campus feed.",
+      style: {
+        background: "hsl(152 68% 38%)",
+        color: "white",
+        border: "1px solid hsl(152 68% 32%)",
+      },
+    });
     load();
   };
 
@@ -212,7 +219,12 @@ export const HomeScreen = () => {
                 </div>
               )}
               <div className="flex items-center gap-3">
-                <img src={avatarFor({ avatar_url: author?.avatar_url ?? null, name: author?.name ?? "?" })} alt="" loading="lazy" className="h-11 w-11 rounded-full object-cover ring-2 ring-background shadow-soft" />
+                <img
+                  src={avatarFor({ avatar_url: author?.avatar_url ?? null, name: author?.name ?? "?" })}
+                  alt=""
+                  loading="lazy"
+                  className="h-11 w-11 rounded-full object-cover border-2 border-[hsl(30_25%_98%)] shadow-soft bg-gradient-hero"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <button onClick={() => post.author_id && navigate(`/u/${post.author_id}`)} className="font-semibold text-sm truncate hover:underline text-left">{author?.name ?? "Unknown"}</button>
@@ -261,7 +273,7 @@ export const HomeScreen = () => {
                   </div>
                 )}
               </div>
-              <p className="mt-3 text-[15px] leading-relaxed text-foreground whitespace-pre-wrap">{post.content}</p>
+              <p className="mt-5 text-[15px] leading-relaxed text-foreground whitespace-pre-wrap">{post.content}</p>
               {post.attachment_url && post.attachment_type === "image" && (
                 <a href={post.attachment_url} target="_blank" rel="noreferrer">
                   <img src={post.attachment_url} alt="" loading="lazy" className="mt-3 rounded-2xl w-full max-h-96 object-cover" />
