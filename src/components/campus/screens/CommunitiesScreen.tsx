@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Users, Plus, X, Trash2, ArrowLeft, Send, Paperclip, FileText, Settings, CheckCheck, Lock } from "lucide-react";
+import { Users, Plus, X, Trash2, ArrowLeft, Send, Paperclip, FileText, Settings, CheckCheck, Lock, LogOut } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,6 +9,7 @@ import { ALL_INTERESTS } from "@/data/constants";
 import { uploadAttachment, detectKind } from "@/lib/uploads";
 import { formatDistanceToNow } from "date-fns";
 import { avatarFor } from "@/hooks/useProfiles";
+import { ConfirmDialog } from "../ConfirmDialog";
 
 interface Community {
   id: string;
@@ -42,6 +43,8 @@ export const CommunitiesScreen = () => {
   const [form, setForm] = useState({ name: "", description: "", interest: ALL_INTERESTS[0], emoji: "✨", color: "from-violet-500 to-fuchsia-500" });
   const [submitting, setSubmitting] = useState(false);
   const [activeChat, setActiveChat] = useState<Community | null>(null);
+  const [confirmDel, setConfirmDel] = useState<Community | null>(null);
+  const [working, setWorking] = useState(false);
 
   const load = async () => {
     const { data: comms } = await supabase.from("communities").select("*").order("name");
@@ -95,13 +98,15 @@ export const CommunitiesScreen = () => {
     }
   };
 
-  const deleteCommunity = async (c: Community) => {
-    if (!user) return;
-    if (!confirm(`Delete "${c.name}"? This cannot be undone.`)) return;
-    const { error } = await supabase.from("communities").delete().eq("id", c.id);
+  const deleteCommunity = async () => {
+    if (!user || !confirmDel) return;
+    setWorking(true);
+    const { error } = await supabase.from("communities").delete().eq("id", confirmDel.id);
+    setWorking(false);
     if (error) return toast.error(error.message);
-    toast.success(`${c.name} deleted`);
-    setCommunities((prev) => prev.filter((x) => x.id !== c.id));
+    toast.success(`${confirmDel.name} deleted`);
+    setCommunities((prev) => prev.filter((x) => x.id !== confirmDel.id));
+    setConfirmDel(null);
   };
 
   const myCommunities = communities.filter((c) => joined[c.id]);
@@ -148,7 +153,7 @@ export const CommunitiesScreen = () => {
               </div>
               <div className="flex items-center gap-1.5">
                 {c.created_by === user?.id && (
-                  <button onClick={() => deleteCommunity(c)} aria-label="Delete" className="h-8 w-8 rounded-full bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20 transition-smooth">
+                  <button onClick={() => setConfirmDel(c)} aria-label="Delete" className="h-8 w-8 rounded-full bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20 transition-smooth">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 )}
@@ -186,6 +191,17 @@ export const CommunitiesScreen = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirmDel}
+        title={`Delete "${confirmDel?.name ?? ""}"?`}
+        description="This will permanently remove the community and all its messages."
+        confirmLabel="Delete community"
+        destructive
+        busy={working}
+        onCancel={() => setConfirmDel(null)}
+        onConfirm={deleteCommunity}
+      />
     </div>
   );
 };
