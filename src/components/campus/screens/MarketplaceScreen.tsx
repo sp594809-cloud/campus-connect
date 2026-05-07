@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Plus, ShoppingBag, X, Trash2, Paperclip } from "lucide-react";
+import { Loader2, Plus, ShoppingBag, X, Trash2, Paperclip, CheckCircle2, RotateCcw } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { uploadAttachment } from "@/lib/uploads";
 import { Eye, Flame, Sparkles } from "lucide-react";
+import { ConfirmDialog } from "../ConfirmDialog";
 
 interface Listing {
   id: string;
@@ -36,6 +37,8 @@ export const MarketplaceScreen = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [confirmDel, setConfirmDel] = useState<Listing | null>(null);
+  const [working, setWorking] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -91,10 +94,27 @@ export const MarketplaceScreen = () => {
     finally { setUploading(false); }
   };
 
-  const remove = async (id: string) => {
-    const { error } = await supabase.from("marketplace_listings").delete().eq("id", id);
+  const remove = async () => {
+    if (!confirmDel) return;
+    setWorking(true);
+    const { error } = await supabase.from("marketplace_listings").delete().eq("id", confirmDel.id);
+    setWorking(false);
     if (error) { toast.error(error.message); return; }
-    setItems((p) => p.filter((x) => x.id !== id));
+    setItems((p) => p.filter((x) => x.id !== confirmDel.id));
+    setConfirmDel(null);
+    toast.success("Listing removed");
+  };
+
+  const toggleSold = async (it: Listing) => {
+    const next = it.status === "sold" ? "available" : "sold";
+    setItems((p) => p.map((x) => (x.id === it.id ? { ...x, status: next } : x)));
+    const { error } = await supabase.from("marketplace_listings").update({ status: next }).eq("id", it.id);
+    if (error) {
+      toast.error(error.message);
+      setItems((p) => p.map((x) => (x.id === it.id ? { ...x, status: it.status } : x)));
+      return;
+    }
+    toast.success(next === "sold" ? "Marked as sold ✅" : "Listing reopened");
   };
 
   return (
@@ -141,8 +161,14 @@ export const MarketplaceScreen = () => {
           </div>
         )}
         {items.map((it) => (
-          <article key={it.id} className="relative rounded-2xl glass-card p-4 shadow-soft flex gap-3">
+          <article key={it.id} className={cn("relative rounded-2xl glass-card p-4 shadow-soft flex gap-3", it.status === "sold" && "opacity-95")}>
+            {it.status === "sold" && (
+              <span className="absolute -top-2 right-3 z-10 px-2.5 py-0.5 rounded-full badge-social-proof glow-warning text-[10px] font-black uppercase tracking-[0.15em] inline-flex items-center gap-1">
+                <CheckCircle2 className="h-2.5 w-2.5" /> Sold
+              </span>
+            )}
             {(() => {
+              if (it.status === "sold") return null;
               const ageMin = (Date.now() - new Date(it.created_at).getTime()) / 60000;
               if (ageMin < 60) return (
                 <span className="absolute -top-2 -left-2 z-10 px-2 py-0.5 rounded-full bg-success text-success-foreground glow-success text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1">
@@ -157,14 +183,14 @@ export const MarketplaceScreen = () => {
               return null;
             })()}
             {it.image_url ? (
-              <img src={it.image_url} alt={it.title} className="h-20 w-20 rounded-xl object-cover" />
+              <img src={it.image_url} alt={it.title} className={cn("h-20 w-20 rounded-xl object-cover", it.status === "sold" && "grayscale")} />
             ) : (
               <div className="h-20 w-20 rounded-xl bg-secondary flex items-center justify-center"><ShoppingBag className="h-6 w-6 text-muted-foreground" /></div>
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-semibold text-sm truncate">{it.title}</p>
+                  <p className={cn("font-semibold text-sm truncate", it.status === "sold" && "line-through text-muted-foreground")}>{it.title}</p>
                   <p className="text-xs text-muted-foreground truncate">{it.seller?.name ?? "Unknown"} · {formatDistanceToNow(new Date(it.created_at), { addSuffix: true })}</p>
                 </div>
                 <span className="font-bold text-sm text-accent whitespace-nowrap">₹{it.price}</span>
@@ -173,13 +199,39 @@ export const MarketplaceScreen = () => {
               <div className="mt-2 flex items-center gap-2">
                 <span className="text-[10px] uppercase tracking-wider font-bold bg-secondary px-2 py-0.5 rounded-full">{it.category}</span>
                 {user?.id === it.seller_id && (
-                  <button onClick={() => remove(it.id)} className="ml-auto text-xs text-destructive flex items-center gap-1"><Trash2 className="h-3 w-3" /> Remove</button>
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <button
+                      onClick={() => toggleSold(it)}
+                      className={cn(
+                        "text-[11px] inline-flex items-center gap-1 px-2 py-1 rounded-full font-bold transition-smooth",
+                        it.status === "sold"
+                          ? "bg-secondary text-foreground hover:bg-secondary/70"
+                          : "badge-social-proof glow-warning"
+                      )}
+                    >
+                      {it.status === "sold" ? <><RotateCcw className="h-3 w-3" /> Reopen</> : <><CheckCircle2 className="h-3 w-3" /> Mark sold</>}
+                    </button>
+                    <button onClick={() => setConfirmDel(it)} aria-label="Remove" className="text-xs text-destructive flex items-center gap-1 px-2 py-1 rounded-full hover:bg-destructive/10">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
           </article>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={!!confirmDel}
+        title="Delete this listing?"
+        description="This is permanent. Consider marking as sold instead — buyers love seeing social proof."
+        confirmLabel="Delete listing"
+        destructive
+        busy={working}
+        onCancel={() => setConfirmDel(null)}
+        onConfirm={remove}
+      />
 
       {open && (
         <div className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" onClick={() => setOpen(false)}>
