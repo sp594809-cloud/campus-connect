@@ -173,4 +173,20 @@ All colors MUST be HSL.
     color: hsl(var(--warning-foreground));
     box-shadow: 0 4px 14px -4px hsl(22 100% 52% / 0.45);
   }
+  .glow-warning {
+    box-shadow: 0 0 0 1px hsl(22 100% 52% / 0.35), 0 8px 28px -6px hsl(22 100% 52% / 0.55);
+  }
+  .glow-danger {
+    box-shadow: 0 0 0 1px hsl(0 78% 52% / 0.35), 0 8px 28px -6px hsl(0 78% 52% / 0.55);
+  }
+  .glow-success {
+    box-shadow: 0 0 0 1px hsl(152 68% 38% / 0.30), 0 8px 28px -6px hsl(152 68% 38% / 0.45);
+  }
+  .icon-gradient-active {
+    background: var(--gradient-hero);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
 }
