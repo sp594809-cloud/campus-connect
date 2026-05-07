@@ -130,10 +130,6 @@ export const HomeScreen = () => {
         </div>
       </div>
 
-      <div className="px-5 mt-4">
-        <YearDashboard />
-      </div>
-
       <div className="px-5 mt-5 flex gap-2 overflow-x-auto scrollbar-hide">
         {filters.map((f) => (
           <button
