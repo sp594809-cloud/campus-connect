@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { emitReward } from "@/lib/rewards";
 
 export interface Profile {
   id: string;
@@ -77,9 +78,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .channel(`karma-${user.id}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "karma_events", filter: `user_id=eq.${user.id}` }, (payload) => {
         const e: any = payload.new;
-        if (e.action === "advice_upvoted") toast.success(`Your advice helped a junior! +${e.points} Legacy points`);
-        else if (e.action === "interview_post") toast.success(`Interview shared! +${e.points} Legacy points`);
-        else if (e.action === "aspire_engage") toast(`+${e.points} Aspire points 🌱`);
+        const LEGACY = new Set(["advice_upvoted", "interview_post", "mentorship_completed", "resume_review", "mock_interview"]);
+        const kind: "aspire" | "legacy" = LEGACY.has(e.action) ? "legacy" : "aspire";
+        const label =
+          e.action === "advice_upvoted" ? "advice helped a junior" :
+          e.action === "interview_post" ? "interview shared" :
+          e.action === "mentorship_completed" ? "mentorship done" :
+          e.action === "aspire_engage" ? "engagement" :
+          e.action === "daily_streak" ? "daily streak" :
+          "karma";
+        emitReward(e.points, label, kind);
+        if (e.action === "advice_upvoted") toast.success(`Your advice helped a junior! +${e.points} Legacy`);
         loadProfile(user.id);
       })
       .subscribe();
