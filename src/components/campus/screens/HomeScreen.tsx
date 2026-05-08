@@ -60,12 +60,13 @@ export const HomeScreen = () => {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("posts")
       .select("id,content,type,tag,pinned,created_at,author_id,attachment_url,attachment_type,author:profiles!posts_author_id_fkey(name,avatar_url,branch,year,placement_status,company,college_email_verified),likes:post_likes(user_id),comments:post_comments(count)")
       .order("pinned", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(50);
+    if (error) { toast.error(error.message); setLoading(false); return; }
     setPosts((data ?? []) as unknown as FeedPost[]);
     setLoading(false);
   };
