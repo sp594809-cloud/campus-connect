@@ -1,11 +1,9 @@
 import { Bell, Check, Search, X } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useConnections } from "@/hooks/useConnections";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useEffect } from "react";
-
-interface Sender { id: string; name: string; avatar_url: string | null; branch: string | null; year: string | null }
+import { useProfilesByIds, type MiniProfile } from "@/lib/api/profiles";
 
 export const Header = ({
   title,
@@ -20,18 +18,13 @@ export const Header = ({
 }) => {
   const { pendingIncoming, reload } = useConnections();
   const [open, setOpen] = useState(false);
-  const [senders, setSenders] = useState<Record<string, Sender>>({});
-
-  useEffect(() => {
-    const ids = pendingIncoming.map((r) => r.requester_id);
-    if (!ids.length) return;
-    (async () => {
-      const { data } = await supabase.from("profiles").select("id,name,avatar_url,branch,year").in("id", ids);
-      const map: Record<string, Sender> = {};
-      (data ?? []).forEach((p: any) => { map[p.id] = p; });
-      setSenders(map);
-    })();
-  }, [pendingIncoming.length]);
+  const ids = useMemo(() => pendingIncoming.map((r) => r.requester_id), [pendingIncoming]);
+  const { data: senderList } = useProfilesByIds(ids);
+  const senders = useMemo<Record<string, MiniProfile>>(() => {
+    const map: Record<string, MiniProfile> = {};
+    (senderList ?? []).forEach((p) => { map[p.id] = p; });
+    return map;
+  }, [senderList]);
 
   const respond = async (id: string, status: "accepted" | "declined") => {
     const { error } = await supabase.from("connection_requests").update({ status }).eq("id", id);

@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Copy, Link2, MessageCircle, Send, Share2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useConnections } from "@/hooks/useConnections";
 import { avatarFor } from "@/hooks/useProfiles";
+import { fetchProfilesByIds, type MiniProfile } from "@/lib/api/profiles";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -15,12 +16,10 @@ interface Props {
   preview?: string;
 }
 
-interface Mini { id: string; name: string; avatar_url: string | null }
-
 export const ShareDrawer = ({ open, onClose, title, url, preview }: Props) => {
   const { user } = useAuth();
   const { rows } = useConnections();
-  const [recents, setRecents] = useState<Mini[]>([]);
+  const [recents, setRecents] = useState<MiniProfile[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,12 +30,15 @@ export const ShareDrawer = ({ open, onClose, title, url, preview }: Props) => {
       .slice(0, 12)
       .map((r) => (r.requester_id === user.id ? r.recipient_id : r.requester_id));
     if (otherIds.length === 0) { setRecents([]); return; }
-    (async () => {
-      const { data } = await supabase
-        .from("profiles").select("id,name,avatar_url").in("id", otherIds);
-      const map = new Map((data ?? []).map((p: any) => [p.id, p]));
-      setRecents(otherIds.map((id) => map.get(id)).filter(Boolean) as Mini[]);
-    })();
+    let alive = true;
+    fetchProfilesByIds(otherIds)
+      .then((data) => {
+        if (!alive) return;
+        const map = new Map(data.map((p) => [p.id, p]));
+        setRecents(otherIds.map((id) => map.get(id)).filter(Boolean) as MiniProfile[]);
+      })
+      .catch((err) => console.error("[ShareDrawer] profiles", err));
+    return () => { alive = false; };
   }, [open, user?.id, rows]);
 
   if (!open) return null;
@@ -66,8 +68,9 @@ export const ShareDrawer = ({ open, onClose, title, url, preview }: Props) => {
     catch { toast.error("Copy failed"); }
   };
   const native = async () => {
-    if (!(navigator as any).share) { copy(); return; }
-    try { await (navigator as any).share({ title, text: preview ?? title, url }); }
+    const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void> };
+    if (!nav.share) { copy(); return; }
+    try { await nav.share({ title, text: preview ?? title, url }); }
     catch { /* dismissed */ }
   };
 
