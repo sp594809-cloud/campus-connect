@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { uploadAttachment } from "@/lib/uploads";
+import { fetchProfilesByIds } from "@/lib/api/profiles";
 import { Eye, Flame, Sparkles } from "lucide-react";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { cn } from "@/lib/utils";
@@ -43,17 +44,24 @@ export const MarketplaceScreen = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("marketplace_listings")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(100);
+    if (error) {
+      toast.error(error.message);
+      setLoading(false);
+      return;
+    }
     const rows = (data ?? []) as Listing[];
     const ids = Array.from(new Set(rows.map((r) => r.seller_id)));
-    if (ids.length) {
-      const { data: profs } = await supabase.from("profiles").select("id,name,avatar_url").in("id", ids);
-      const map = new Map((profs ?? []).map((p: any) => [p.id, p]));
-      rows.forEach((r) => { r.seller = map.get(r.seller_id) as any; });
+    try {
+      const profs = await fetchProfilesByIds(ids);
+      const map = new Map(profs.map((p) => [p.id, p]));
+      rows.forEach((r) => { r.seller = map.get(r.seller_id) ?? null; });
+    } catch (err) {
+      console.error("[Marketplace] sellers", err);
     }
     setItems(rows);
     setLoading(false);
@@ -91,7 +99,10 @@ export const MarketplaceScreen = () => {
     try {
       const r = await uploadAttachment(file, "post-media", user.id);
       if (r) setImageUrl(r.url);
-    } catch (err: any) { toast.error(err.message ?? "Upload failed"); }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      toast.error(msg);
+    }
     finally { setUploading(false); }
   };
 
