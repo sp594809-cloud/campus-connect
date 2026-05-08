@@ -518,18 +518,22 @@ const CommentsSheet = ({ postId, onClose }: { postId: string; onClose: () => voi
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("post_comments")
       .select("id,content,created_at,author_id")
       .eq("post_id", postId)
       .order("created_at", { ascending: true });
+    if (error) { toast.error(error.message); setLoading(false); return; }
     const rows = (data ?? []) as Comment[];
     const ids = Array.from(new Set(rows.map((r) => r.author_id)));
-    if (ids.length) {
-      const { data: profs } = await supabase.from("profiles").select("id,name,avatar_url").in("id", ids);
-      const map = new Map((profs ?? []).map((p: any) => [p.id, p]));
-      rows.forEach((r) => { r.author = map.get(r.author_id) as any; });
-    }
+    try {
+      const profs = await fetchProfilesByIds(ids);
+      const map = new Map(profs.map((p) => [p.id, p]));
+      rows.forEach((r) => {
+        const p = map.get(r.author_id);
+        r.author = p ? { name: p.name, avatar_url: p.avatar_url } : undefined;
+      });
+    } catch (err) { console.error("[comments] authors", err); }
     setItems(rows);
     setLoading(false);
   };
