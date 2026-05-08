@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import networkBg from "@/assets/network-bg.jpg";
 import { uploadAttachment, detectKind } from "@/lib/uploads";
+import { fetchProfilesByIds } from "@/lib/api/profiles";
 import { StreakBanner } from "../StreakBanner";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ShareDrawer } from "../ShareDrawer";
@@ -76,13 +77,14 @@ export const HomeScreen = () => {
     if (searchMode !== "enrollment" || !searchTerm.trim()) { setEnrollmentMatchName(null); return; }
     let alive = true;
     const t = setTimeout(async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("student1")
         .select("full_name,enrollment_id")
         .ilike("enrollment_id", `%${searchTerm.trim()}%`)
         .limit(1)
-        .maybeSingle();
-      if (alive) setEnrollmentMatchName((data as any)?.full_name ?? null);
+        .maybeSingle<{ full_name: string; enrollment_id: string }>();
+      if (error) console.error("[enrollment lookup]", error);
+      if (alive) setEnrollmentMatchName(data?.full_name ?? null);
     }, 250);
     return () => { alive = false; clearTimeout(t); };
   }, [searchMode, searchTerm]);
@@ -153,7 +155,10 @@ export const HomeScreen = () => {
     try {
       const r = await uploadAttachment(file, "post-media", user.id);
       if (r) setAttachment(r);
-    } catch (err: any) { toast.error(err.message ?? "Upload failed"); }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      toast.error(msg);
+    }
     finally { setUploading(false); }
   };
 
