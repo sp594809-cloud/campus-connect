@@ -34,16 +34,16 @@ const InterviewExperienceDetail = () => {
         .eq("id", id)
         .maybeSingle();
       if (error) console.error("interview detail error", error);
-      let author = null as Exp["author"];
+      let author: Exp["author"] = null;
       if (e?.author_id && !e.anonymous) {
         const { data: p } = await supabase
           .from("profiles")
           .select("name,avatar_url,branch,year")
           .eq("id", e.author_id)
-          .maybeSingle();
-        author = (p as any) ?? null;
+          .maybeSingle<NonNullable<Exp["author"]>>();
+        author = p ?? null;
       }
-      setExp(e ? ({ ...(e as any), author } as Exp) : null);
+      setExp(e ? ({ ...(e as unknown as Omit<Exp, "author">), author } as Exp) : null);
       const { data: r } = await supabase.from("interview_rounds").select("*").eq("experience_id", id).order("round_number");
       setRounds((r ?? []) as Round[]);
       setLoading(false);

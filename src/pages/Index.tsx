@@ -68,8 +68,8 @@ const StudentRegistrationForm = () => {
         .eq("phone_number", phoneNumber)
         .maybeSingle();
       if (existing) toast.message("You're already registered — tap Continue to sign in.");
-    } catch (e: any) {
-      const msg = e?.message ?? "Lookup failed. Please try again.";
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Lookup failed. Please try again.";
       setError(msg); toast.error(msg);
     } finally { setIsLoading(false); }
   };
@@ -119,8 +119,8 @@ const StudentRegistrationForm = () => {
       const { data: prof } = await supabase.from("profiles").select("onboarded").eq("id", uid).maybeSingle();
       toast.success(`Welcome, ${student.full_name.split(" ")[0]}!`);
       navigate(prof?.onboarded ? "/campus" : "/onboarding", { replace: true });
-    } catch (e: any) {
-      const msg = e?.message ?? "Sign-in failed. Please try again.";
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Sign-in failed. Please try again.";
       setError(msg); toast.error(msg);
     } finally { setSigningIn(false); }
   };
