@@ -10,7 +10,7 @@ export const RewardLayer = () => {
       setItems((p) => [...p, r]);
       // gentle haptic-like vibration on supported devices
       if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-        try { (navigator as any).vibrate?.(15); } catch {}
+        try { (navigator as Navigator & { vibrate?: (p: number) => boolean }).vibrate?.(15); } catch {}
       }
       setTimeout(() => setItems((p) => p.filter((x) => x.id !== r.id)), 1700);
     });

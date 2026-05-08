@@ -33,10 +33,17 @@ const InterviewCompare = () => {
     (async () => {
       const missing = picked.filter((id) => !rounds[id]);
       if (!missing.length) return;
-      const { data } = await supabase.from("interview_rounds").select("experience_id,round_number,round_type,difficulty").in("experience_id", missing).order("round_number");
+      const { data, error } = await supabase
+        .from("interview_rounds")
+        .select("experience_id,round_number,round_type,difficulty")
+        .in("experience_id", missing)
+        .order("round_number");
+      if (error) { console.error("[InterviewCompare] rounds", error); return; }
       const map: Record<string, Round[]> = { ...rounds };
       missing.forEach((id) => { map[id] = []; });
-      (data ?? []).forEach((r: any) => { map[r.experience_id] = [...(map[r.experience_id] ?? []), r]; });
+      ((data ?? []) as (Round & { experience_id: string })[]).forEach((r) => {
+        map[r.experience_id] = [...(map[r.experience_id] ?? []), r];
+      });
       setRounds(map);
     })();
   }, [picked]);
