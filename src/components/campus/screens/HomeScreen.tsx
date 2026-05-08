@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import networkBg from "@/assets/network-bg.jpg";
 import { uploadAttachment, detectKind } from "@/lib/uploads";
+import { fetchProfilesByIds } from "@/lib/api/profiles";
 import { StreakBanner } from "../StreakBanner";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ShareDrawer } from "../ShareDrawer";
@@ -59,12 +60,13 @@ export const HomeScreen = () => {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("posts")
       .select("id,content,type,tag,pinned,created_at,author_id,attachment_url,attachment_type,author:profiles!posts_author_id_fkey(name,avatar_url,branch,year,placement_status,company,college_email_verified),likes:post_likes(user_id),comments:post_comments(count)")
       .order("pinned", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(50);
+    if (error) { toast.error(error.message); setLoading(false); return; }
     setPosts((data ?? []) as unknown as FeedPost[]);
     setLoading(false);
   };
@@ -76,13 +78,14 @@ export const HomeScreen = () => {
     if (searchMode !== "enrollment" || !searchTerm.trim()) { setEnrollmentMatchName(null); return; }
     let alive = true;
     const t = setTimeout(async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("student1")
         .select("full_name,enrollment_id")
         .ilike("enrollment_id", `%${searchTerm.trim()}%`)
         .limit(1)
-        .maybeSingle();
-      if (alive) setEnrollmentMatchName((data as any)?.full_name ?? null);
+        .maybeSingle<{ full_name: string; enrollment_id: string }>();
+      if (error) console.error("[enrollment lookup]", error);
+      if (alive) setEnrollmentMatchName(data?.full_name ?? null);
     }, 250);
     return () => { alive = false; clearTimeout(t); };
   }, [searchMode, searchTerm]);
@@ -153,7 +156,10 @@ export const HomeScreen = () => {
     try {
       const r = await uploadAttachment(file, "post-media", user.id);
       if (r) setAttachment(r);
-    } catch (err: any) { toast.error(err.message ?? "Upload failed"); }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      toast.error(msg);
+    }
     finally { setUploading(false); }
   };
 
@@ -512,18 +518,22 @@ const CommentsSheet = ({ postId, onClose }: { postId: string; onClose: () => voi
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("post_comments")
       .select("id,content,created_at,author_id")
       .eq("post_id", postId)
       .order("created_at", { ascending: true });
+    if (error) { toast.error(error.message); setLoading(false); return; }
     const rows = (data ?? []) as Comment[];
     const ids = Array.from(new Set(rows.map((r) => r.author_id)));
-    if (ids.length) {
-      const { data: profs } = await supabase.from("profiles").select("id,name,avatar_url").in("id", ids);
-      const map = new Map((profs ?? []).map((p: any) => [p.id, p]));
-      rows.forEach((r) => { r.author = map.get(r.author_id) as any; });
-    }
+    try {
+      const profs = await fetchProfilesByIds(ids);
+      const map = new Map(profs.map((p) => [p.id, p]));
+      rows.forEach((r) => {
+        const p = map.get(r.author_id);
+        r.author = p ? { name: p.name, avatar_url: p.avatar_url } : undefined;
+      });
+    } catch (err) { console.error("[comments] authors", err); }
     setItems(rows);
     setLoading(false);
   };

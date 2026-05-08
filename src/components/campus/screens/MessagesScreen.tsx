@@ -8,6 +8,7 @@ import { iceBreakers } from "@/data/constants";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { uploadAttachment, detectKind } from "@/lib/uploads";
+import { fetchPublicProfilesByIds } from "@/lib/api/profiles";
 import { toast } from "sonner";
 
 interface ConvRow {
@@ -39,19 +40,19 @@ export const MessagesScreen = ({ openWith, onClearOpen }: { openWith: string | n
 
   const loadConversations = async () => {
     if (!user) return;
-    const { data: convs } = await supabase
+    const { data: convs, error: cErr } = await supabase
       .from("conversations")
       .select("id, user_a, user_b, last_message_at")
       .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
       .order("last_message_at", { ascending: false });
+    if (cErr) { toast.error(cErr.message); setLoading(false); return; }
     if (!convs?.length) { setConversations([]); setLoading(false); return; }
 
     const otherIds = convs.map((c) => c.user_a === user.id ? c.user_b : c.user_a);
-    const { data: profs } = await supabase
-      .from("profiles")
-      .select("id,name,branch,year,bio,avatar_url,interests,skills,open_to_mentor,looking_for_mentor_in,placement_status,company,college_email_verified")
-      .in("id", otherIds);
-    const profMap = new Map((profs ?? []).map((p) => [p.id, p as unknown as PublicProfile]));
+    const profs = await fetchPublicProfilesByIds(otherIds).catch((err) => {
+      console.error("[Messages] profiles", err); return [] as PublicProfile[];
+    });
+    const profMap = new Map(profs.map((p) => [p.id, p]));
 
     const { data: lastMsgs } = await supabase
       .from("messages")
@@ -87,12 +88,11 @@ export const MessagesScreen = ({ openWith, onClearOpen }: { openWith: string | n
   useEffect(() => {
     if (!openWith || !user) return;
     (async () => {
-      const { data: convId } = await supabase.rpc("get_or_create_conversation", { other_user: openWith });
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("id,name,branch,year,bio,avatar_url,interests,skills,open_to_mentor,looking_for_mentor_in,placement_status,company,college_email_verified")
-        .eq("id", openWith).maybeSingle();
-      if (convId && prof) setActiveConv({ id: convId as unknown as string, other: prof as unknown as PublicProfile });
+      const { data: convId, error: rpcErr } = await supabase.rpc("get_or_create_conversation", { other_user: openWith });
+      if (rpcErr) { toast.error(rpcErr.message); onClearOpen(); return; }
+      const profs = await fetchPublicProfilesByIds([openWith]).catch(() => [] as PublicProfile[]);
+      const prof = profs[0];
+      if (convId && prof) setActiveConv({ id: convId as unknown as string, other: prof });
       onClearOpen();
     })();
   }, [openWith, user]);
@@ -197,8 +197,9 @@ const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProf
         conversation_id: convId, sender_id: user.id,
         content: null, attachment_url: result.url, attachment_type: result.type,
       });
-    } catch (err: any) {
-      toast.error(err.message ?? "Upload failed");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      toast.error(msg);
     } finally { setUploading(false); }
   };
 

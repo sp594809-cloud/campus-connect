@@ -18,6 +18,7 @@ import MentorDirectory from "./pages/MentorDirectory.tsx";
 import Karma from "./pages/Karma.tsx";
 import { Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +29,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
+          <ErrorBoundary>
+            <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/onboarding" element={<StudentOnboarding />} />
@@ -42,8 +44,9 @@ const App = () => (
             <Route path="/mentors" element={<MentorDirectory />} />
             <Route path="/karma" element={<Karma />} />
             <Route path="/app" element={<Navigate to="/campus" replace />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

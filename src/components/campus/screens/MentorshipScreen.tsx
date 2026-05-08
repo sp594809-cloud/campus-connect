@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, GraduationCap, Send, Sparkles, X } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { avatarFor, type PublicProfile } from "@/hooks/useProfiles";
+import { useMentors, fetchPublicProfilesByIds } from "@/lib/api/profiles";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -17,30 +19,30 @@ const tabs = ["Find Mentor", "My Requests", "Incoming"] as const;
 
 export const MentorshipScreen = () => {
   const { user, profile } = useAuth();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<typeof tabs[number]>("Find Mentor");
-  const [mentors, setMentors] = useState<PublicProfile[]>([]);
-  const [requests, setRequests] = useState<RequestRow[]>([]);
   const [askMentor, setAskMentor] = useState<PublicProfile | null>(null);
   const [topic, setTopic] = useState(""); const [msg, setMsg] = useState("");
 
-  const load = async () => {
-    if (!user) return;
-    const { data: ms } = await supabase.from("profiles")
-      .select("id,name,branch,year,bio,avatar_url,interests,skills,open_to_mentor,looking_for_mentor_in,placement_status,company,college_email_verified")
-      .eq("open_to_mentor", true).neq("id", user.id);
-    setMentors((ms ?? []) as unknown as PublicProfile[]);
+  const { data: mentors = [] } = useMentors(user?.id);
 
-    const { data: rs } = await supabase.from("mentorship_requests").select("*")
-      .or(`requester_id.eq.${user.id},mentor_id.eq.${user.id}`).order("created_at", { ascending: false });
-    const ids = Array.from(new Set((rs ?? []).flatMap((r) => [r.requester_id, r.mentor_id])));
-    const { data: ps } = ids.length ? await supabase.from("profiles")
-      .select("id,name,branch,year,bio,avatar_url,interests,skills,open_to_mentor,looking_for_mentor_in,placement_status,company,college_email_verified")
-      .in("id", ids) : { data: [] };
-    const pmap = new Map((ps ?? []).map((p) => [p.id, p as unknown as PublicProfile]));
-    setRequests((rs ?? []).map((r) => ({ ...r, requester: pmap.get(r.requester_id), mentor: pmap.get(r.mentor_id) })) as RequestRow[]);
-  };
-
-  useEffect(() => { load(); }, [user?.id]);
+  const { data: requests = [], refetch: refetchRequests } = useQuery<RequestRow[]>({
+    queryKey: ["mentorship", "requests", user?.id ?? null],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data: rs, error } = await supabase
+        .from("mentorship_requests")
+        .select("*")
+        .or(`requester_id.eq.${user!.id},mentor_id.eq.${user!.id}`)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const rows = (rs ?? []) as RequestRow[];
+      const ids = Array.from(new Set(rows.flatMap((r) => [r.requester_id, r.mentor_id])));
+      const profs = await fetchPublicProfilesByIds(ids);
+      const pmap = new Map(profs.map((p) => [p.id, p]));
+      return rows.map((r) => ({ ...r, requester: pmap.get(r.requester_id), mentor: pmap.get(r.mentor_id) }));
+    },
+  });
 
   const submit = async () => {
     if (!user || !askMentor || !topic.trim()) return;
@@ -49,17 +51,20 @@ export const MentorshipScreen = () => {
     });
     if (error) return toast.error(error.message);
     toast.success("Mentorship request sent!");
-    setAskMentor(null); setTopic(""); setMsg(""); load();
+    setAskMentor(null); setTopic(""); setMsg("");
+    refetchRequests();
   };
 
   const respond = async (r: RequestRow, status: "accepted" | "declined") => {
-    await supabase.from("mentorship_requests").update({ status }).eq("id", r.id);
+    const { error } = await supabase.from("mentorship_requests").update({ status }).eq("id", r.id);
+    if (error) return toast.error(error.message);
     toast.success(status === "accepted" ? "Accepted! Reach out via chat." : "Declined.");
-    load();
+    refetchRequests();
+    queryClient.invalidateQueries({ queryKey: ["mentorship"] });
   };
 
-  const myRequests = requests.filter((r) => r.requester_id === user?.id);
-  const incoming = requests.filter((r) => r.mentor_id === user?.id);
+  const myRequests = useMemo(() => requests.filter((r) => r.requester_id === user?.id), [requests, user?.id]);
+  const incoming = useMemo(() => requests.filter((r) => r.mentor_id === user?.id), [requests, user?.id]);
 
   return (
     <div className="animate-fade-in-up">

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { emitReward } from "@/lib/rewards";
@@ -39,14 +40,42 @@ interface AuthCtx {
 
 const Ctx = createContext<AuthCtx>({} as AuthCtx);
 
+type KarmaAction =
+  | "advice_upvoted"
+  | "interview_post"
+  | "mentorship_completed"
+  | "resume_review"
+  | "mock_interview"
+  | "aspire_engage"
+  | "daily_streak"
+  | string;
+
+interface KarmaEventRow {
+  id?: string;
+  user_id?: string;
+  action?: KarmaAction;
+  points?: number;
+  note?: string | null;
+  created_at?: string;
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadProfile = async (uid: string) => {
-    const { data } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", uid)
+      .maybeSingle();
+    if (error) {
+      console.error("[loadProfile]", error);
+      return;
+    }
     setProfile((data as Profile) ?? null);
   };
 
@@ -77,7 +106,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const ch = supabase
       .channel(`karma-${user.id}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "karma_events", filter: `user_id=eq.${user.id}` }, (payload) => {
-        const e: any = payload.new;
+        const e = (payload.new ?? {}) as KarmaEventRow;
+        if (!e?.action || typeof e.points !== "number") return;
         const LEGACY = new Set(["advice_upvoted", "interview_post", "mentorship_completed", "resume_review", "mock_interview"]);
         const kind: "aspire" | "legacy" = LEGACY.has(e.action) ? "legacy" : "aspire";
         const label =
@@ -105,7 +135,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         refreshProfile: async () => user && loadProfile(user.id),
         signOut: async () => {
           await supabase.auth.signOut();
-          window.location.href = "/auth";
+          navigate("/auth", { replace: true });
         },
       }}
     >

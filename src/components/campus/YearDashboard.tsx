@@ -149,7 +149,16 @@ const MentorInboxCard = () => {
 
   useEffect(() => {
     if (!user || !isMentor) return;
-    supabase.from("mentorship_requests").select("id,topic,message,requester_id,created_at").eq("mentor_id", user.id).eq("status", "pending").order("created_at", { ascending: false }).then(({ data }) => setRequests((data ?? []) as any));
+    supabase
+      .from("mentorship_requests")
+      .select("id,topic,message,requester_id,created_at")
+      .eq("mentor_id", user.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) { console.error("[MentorInbox]", error); return; }
+        setRequests((data ?? []) as { id: string; topic: string; message: string; requester_id: string; created_at: string }[]);
+      });
   }, [user, isMentor]);
 
   const toggle = async () => {

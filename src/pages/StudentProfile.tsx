@@ -77,7 +77,10 @@ const StudentProfile = () => {
       if (error) throw error;
       await refreshProfile();
       toast.success("Profile photo updated!");
-    } catch (err: any) { toast.error(err.message ?? "Upload failed"); }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      toast.error(msg);
+    }
     finally { setUploading(false); }
   };
 
