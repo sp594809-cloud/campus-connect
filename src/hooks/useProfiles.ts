@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { usePublicProfiles } from "@/lib/api/profiles";
 
 export interface PublicProfile {
   id: string;
@@ -18,26 +17,8 @@ export interface PublicProfile {
 }
 
 export const useProfiles = (excludeId?: string) => {
-  const [profiles, setProfiles] = useState<PublicProfile[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id,name,branch,year,bio,avatar_url,interests,skills,open_to_mentor,looking_for_mentor_in,placement_status,company,college_email_verified")
-        .eq("onboarded", true)
-        .order("created_at", { ascending: false });
-      if (alive) {
-        setProfiles(((data ?? []) as PublicProfile[]).filter((p) => p.id !== excludeId));
-        setLoading(false);
-      }
-    })();
-    return () => { alive = false; };
-  }, [excludeId]);
-
-  return { profiles, loading };
+  const { data, isLoading } = usePublicProfiles(excludeId);
+  return { profiles: data ?? [], loading: isLoading };
 };
 
 // Brand-consistent avatar: Midnight Navy → Electric Purple gradient, Pearl White initials.
