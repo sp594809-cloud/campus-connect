@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { CheckCircle2, Hash, IdCard, Loader2, Mail, Phone, User, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import type { AuthResponse, AuthTokenResponsePassword } from "@supabase/supabase-js";
+
+const PHONE_REGEX = /^[6-9]\d{9}$/;
 
 // Unique app ID = slug(name) + "-" + enrollmentId — same student always gets the same id.
 const buildAppId = (fullName: string, enrollmentId: string) => {
@@ -21,6 +24,7 @@ const credsFor = (appId: string) => ({
 });
 
 type Student = { full_name: string; enrollment_id: string; phone_number: string };
+type AuthSuccess = AuthResponse | AuthTokenResponsePassword;
 
 const StudentRegistrationForm = () => {
   const navigate = useNavigate();
@@ -41,7 +45,10 @@ const StudentRegistrationForm = () => {
 
   const lookupStudent = async () => {
     setError("");
-    if (phoneNumber.length < 10) { setError("Enter a valid 10-digit phone number"); return; }
+    if (!PHONE_REGEX.test(phoneNumber)) {
+      setError("Enter a valid 10-digit Indian mobile number (starting with 6-9)");
+      return;
+    }
     setIsLoading(true);
     try {
       const { data, error: sErr } = await supabase
@@ -61,6 +68,9 @@ const StudentRegistrationForm = () => {
         .eq("phone_number", phoneNumber)
         .maybeSingle();
       if (existing) toast.message("You're already registered — tap Continue to sign in.");
+    } catch (e: any) {
+      const msg = e?.message ?? "Lookup failed. Please try again.";
+      setError(msg); toast.error(msg);
     } finally { setIsLoading(false); }
   };
 
@@ -71,31 +81,47 @@ const StudentRegistrationForm = () => {
     try {
       const id = buildAppId(student.full_name, student.enrollment_id);
       const { email, password } = credsFor(id);
-      let { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+      let signInData: AuthSuccess["data"] | null = null;
+      const signIn = await supabase.auth.signInWithPassword({ email, password });
+      const signInErr = signIn.error;
+      signInData = signIn.data;
       if (signInErr) {
         const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
           email, password, options: { data: { name: student.full_name } },
         });
         if (signUpErr) { setError(signUpErr.message); toast.error(signUpErr.message); return; }
-        signInData = signUpData as any;
+        signInData = signUpData;
         if (!signInData?.session) {
           const retry = await supabase.auth.signInWithPassword({ email, password });
           if (retry.error) { setError(retry.error.message); toast.error(retry.error.message); return; }
-          signInData = retry.data as any;
+          signInData = retry.data;
         }
       }
       const uid = signInData?.user?.id;
       if (!uid) { const m = "Sign-in failed. Please try again."; setError(m); toast.error(m); return; }
 
-      await supabase.from("registered_phones").insert({
-        phone_number: phoneNumber, full_name: student.full_name, enrollment_id: student.enrollment_id,
-      });
-      await supabase.from("profiles").update({ name: student.full_name }).eq("id", uid);
+      const { error: regErr } = await supabase
+        .from("registered_phones")
+        .upsert(
+          { phone_number: phoneNumber, full_name: student.full_name, enrollment_id: student.enrollment_id },
+          { onConflict: "phone_number" }
+        );
+      if (regErr) toast.error(`Couldn't save registration: ${regErr.message}`);
+
+      const { error: profErr } = await supabase
+        .from("profiles")
+        .update({ name: student.full_name })
+        .eq("id", uid);
+      if (profErr) toast.error(`Couldn't update profile: ${profErr.message}`);
+
       await refreshProfile();
 
       const { data: prof } = await supabase.from("profiles").select("onboarded").eq("id", uid).maybeSingle();
       toast.success(`Welcome, ${student.full_name.split(" ")[0]}!`);
       navigate(prof?.onboarded ? "/campus" : "/onboarding", { replace: true });
+    } catch (e: any) {
+      const msg = e?.message ?? "Sign-in failed. Please try again.";
+      setError(msg); toast.error(msg);
     } finally { setSigningIn(false); }
   };
 
@@ -123,7 +149,7 @@ const StudentRegistrationForm = () => {
                   <input
                     type="tel"
                     value={phoneNumber}
-                    onChange={(e) => { setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10)); setError(""); }}
+                    onChange={(e) => { setPhoneNumber(e.target.value.trim().replace(/\D/g, "").slice(0, 10)); setError(""); }}
                     placeholder="10-digit number"
                     maxLength={10}
                     className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 transition-all ${error ? "border-red-300 focus:border-red-500 focus:ring-red-200" : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-200"}`}
@@ -135,7 +161,7 @@ const StudentRegistrationForm = () => {
                     <p className="text-sm text-red-700 font-medium">{error}</p>
                   </div>
                 )}
-                <button onClick={lookupStudent} disabled={isLoading || phoneNumber.length < 10} className="mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md">
+                <button onClick={lookupStudent} disabled={isLoading || !PHONE_REGEX.test(phoneNumber)} className="mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md">
                   {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Checking…</> : <>Continue</>}
                 </button>
               </div>
