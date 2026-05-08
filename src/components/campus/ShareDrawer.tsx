@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Copy, Link2, MessageCircle, Send, Share2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,7 +6,6 @@ import { useConnections } from "@/hooks/useConnections";
 import { avatarFor } from "@/hooks/useProfiles";
 import { fetchProfilesByIds, type MiniProfile } from "@/lib/api/profiles";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 interface Props {
   open: boolean;
