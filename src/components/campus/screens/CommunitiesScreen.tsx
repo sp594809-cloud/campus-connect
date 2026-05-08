@@ -8,8 +8,8 @@ import { toast } from "sonner";
 import { ALL_INTERESTS } from "@/data/constants";
 import { uploadAttachment, detectKind } from "@/lib/uploads";
 import { formatDistanceToNow } from "date-fns";
-import { avatarFor } from "@/hooks/useProfiles";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { fetchProfilesByIds, type MiniProfile } from "@/lib/api/profiles";
 
 interface Community {
   id: string;
@@ -221,18 +221,31 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
   const canSend = isAdmin || !adminsOnly;
 
   const load = async () => {
-    const { data } = await supabase.from("community_messages").select("*").eq("community_id", community.id).order("created_at", { ascending: true }).limit(200);
+    const { data, error } = await supabase
+      .from("community_messages")
+      .select("*")
+      .eq("community_id", community.id)
+      .order("created_at", { ascending: true })
+      .limit(200);
+    if (error) { toast.error(error.message); return; }
     const rows = (data ?? []) as CMsg[];
     const ids = Array.from(new Set(rows.map((r) => r.sender_id)));
-    if (ids.length) {
-      const { data: profs } = await supabase.from("profiles").select("id,name,avatar_url").in("id", ids);
-      const map = new Map((profs ?? []).map((p) => [p.id, p]));
-      rows.forEach((r) => { r.sender = map.get(r.sender_id) as any; });
-    }
+    try {
+      const profs = await fetchProfilesByIds(ids);
+      const map = new Map<string, MiniProfile>(profs.map((p) => [p.id, p]));
+      rows.forEach((r) => {
+        const p = map.get(r.sender_id);
+        r.sender = p ? { name: p.name, avatar_url: p.avatar_url } : undefined;
+      });
+    } catch (err) { console.error("[CommunityChat] senders", err); }
     setMsgs(rows);
     // refresh admins_only
-    const { data: c } = await supabase.from("communities").select("admins_only").eq("id", community.id).maybeSingle();
-    if (c) setAdminsOnly(!!(c as any).admins_only);
+    const { data: c } = await supabase
+      .from("communities")
+      .select("admins_only")
+      .eq("id", community.id)
+      .maybeSingle<{ admins_only: boolean }>();
+    if (c) setAdminsOnly(!!c.admins_only);
   };
 
   useEffect(() => { load(); }, [community.id]);
@@ -241,7 +254,10 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
     const ch = supabase
       .channel(`comm-${community.id}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "community_messages", filter: `community_id=eq.${community.id}` }, () => load())
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "communities", filter: `id=eq.${community.id}` }, (p) => setAdminsOnly(!!(p.new as any).admins_only))
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "communities", filter: `id=eq.${community.id}` }, (p) => {
+        const next = (p.new ?? {}) as { admins_only?: boolean };
+        setAdminsOnly(!!next.admins_only);
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [community.id]);
@@ -264,7 +280,10 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
     try {
       const r = await uploadAttachment(file, "chat-media", user.id);
       if (r) await supabase.from("community_messages").insert({ community_id: community.id, sender_id: user.id, content: null, attachment_url: r.url, attachment_type: r.type });
-    } catch (err: any) { toast.error(err.message ?? "Upload failed"); }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      toast.error(msg);
+    }
     finally { setUploading(false); }
   };
 
