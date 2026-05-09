@@ -585,6 +585,38 @@ export type Database = {
         }
         Relationships: []
       }
+      material_purchases: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          id: string
+          listing_id: string
+          material_id: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          id?: string
+          listing_id: string
+          material_id: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          listing_id?: string
+          material_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_purchases_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "study_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentorship_requests: {
         Row: {
           created_at: string
@@ -946,6 +978,76 @@ export type Database = {
         }
         Relationships: []
       }
+      study_material_secrets: {
+        Row: {
+          created_at: string
+          material_id: string
+          meeting_link: string | null
+          pdf_path: string | null
+        }
+        Insert: {
+          created_at?: string
+          material_id: string
+          meeting_link?: string | null
+          pdf_path?: string | null
+        }
+        Update: {
+          created_at?: string
+          material_id?: string
+          meeting_link?: string | null
+          pdf_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_material_secrets_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: true
+            referencedRelation: "study_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_materials: {
+        Row: {
+          created_at: string
+          has_meeting: boolean
+          has_pdf: boolean
+          id: string
+          listing_id: string
+          preview_text: string
+          seller_id: string
+          type: Database["public"]["Enums"]["study_material_type"]
+        }
+        Insert: {
+          created_at?: string
+          has_meeting?: boolean
+          has_pdf?: boolean
+          id?: string
+          listing_id: string
+          preview_text?: string
+          seller_id: string
+          type: Database["public"]["Enums"]["study_material_type"]
+        }
+        Update: {
+          created_at?: string
+          has_meeting?: boolean
+          has_pdf?: boolean
+          id?: string
+          listing_id?: string
+          preview_text?: string
+          seller_id?: string
+          type?: Database["public"]["Enums"]["study_material_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_materials_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       verified_students: {
         Row: {
           created_at: string | null
@@ -976,6 +1078,10 @@ export type Database = {
       get_or_create_conversation: {
         Args: { other_user: string }
         Returns: string
+      }
+      has_unlocked_material: {
+        Args: { _mid: string; _uid: string }
+        Returns: boolean
       }
       is_community_admin: {
         Args: { _cid: string; _uid: string }
@@ -1028,6 +1134,7 @@ export type Database = {
         | "managerial"
         | "hr"
         | "group_discussion"
+      study_material_type: "PDF_Notes" | "Live_Masterclass"
       year_type: "1st" | "2nd" | "3rd" | "4th"
     }
     CompositeTypes: {
@@ -1197,6 +1304,7 @@ export const Constants = {
         "hr",
         "group_discussion",
       ],
+      study_material_type: ["PDF_Notes", "Live_Masterclass"],
       year_type: ["1st", "2nd", "3rd", "4th"],
     },
   },
