@@ -17,9 +17,9 @@ const buildAppId = (fullName: string, enrollmentId: string) => {
   return `${nameSlug}-${enr}`;
 };
 
-// Deterministic Supabase credentials derived from the unique app ID.
-const credsFor = (appId: string) => ({
-  email: `${appId}@phone.campus.local`,
+// Deterministic Supabase credentials derived from the enrollment id.
+const credsFor = (appId: string, enrollmentId: string) => ({
+  email: `${enrollmentId.trim().toLowerCase().replace(/[^a-z0-9]/g, "")}@mail.ljku.edu.in`,
   password: `cc-${appId}-v1`,
 });
 
@@ -41,7 +41,7 @@ const StudentRegistrationForm = () => {
   }, [session, profile, authLoading, navigate]);
 
   const appId = student ? buildAppId(student.full_name, student.enrollment_id) : "";
-  const studentEmail = appId ? `${appId}@campus.app` : "";
+  const studentEmail = student ? credsFor(appId, student.enrollment_id).email : "";
 
   const lookupStudent = async () => {
     setError("");
@@ -80,7 +80,7 @@ const StudentRegistrationForm = () => {
     setError("");
     try {
       const id = buildAppId(student.full_name, student.enrollment_id);
-      const { email, password } = credsFor(id);
+      const { email, password } = credsFor(id, student.enrollment_id);
       let signInData: AuthSuccess["data"] | null = null;
       const signIn = await supabase.auth.signInWithPassword({ email, password });
       const signInErr = signIn.error;
