@@ -551,33 +551,67 @@ export const MarketplaceScreen = () => {
               <button onClick={() => setKind("digital")} className={cn("py-2 rounded-xl text-xs font-bold", kind === "digital" ? "bg-card shadow-soft" : "text-muted-foreground")}>Digital · Notes/Class</button>
             </div>
 
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" maxLength={80} className="w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none mb-2" />
+            <div className="mb-2">
+              <input
+                ref={titleRef}
+                value={title}
+                onChange={(e) => { setTitle(e.target.value); clearField("title"); }}
+                placeholder="Title"
+                maxLength={80}
+                aria-invalid={!!fieldErrors.title}
+                className={cn(
+                  "w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none transition-all duration-300",
+                  fieldErrors.title && "ring-2 ring-destructive bg-destructive/5 animate-scale-in"
+                )}
+              />
+              {fieldErrors.title && <p className="text-[11px] font-semibold text-destructive mt-1 ml-1">⚠ {fieldErrors.title}</p>}
+            </div>
             <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={2} placeholder="Description" maxLength={500} className="w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none resize-none mb-2" />
 
-            <div className="flex gap-2 mb-2">
-              <input value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="Price ₹ (0 = free)" className="flex-1 px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none" />
+            <div className="flex gap-2 mb-1">
+              <input
+                ref={priceRef}
+                value={price}
+                onChange={(e) => { setPrice(e.target.value.replace(/[^0-9.]/g, "")); clearField("price"); }}
+                placeholder="Price ₹ (0 = free)"
+                aria-invalid={!!fieldErrors.price}
+                className={cn(
+                  "flex-1 px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none transition-all duration-300",
+                  fieldErrors.price && "ring-2 ring-destructive bg-destructive/5 animate-scale-in"
+                )}
+              />
               {kind === "physical" && (
                 <select value={category} onChange={(e) => setCategory(e.target.value)} className="px-3 py-3 rounded-2xl bg-secondary text-sm">
                   {PHYSICAL_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               )}
             </div>
+            {fieldErrors.price && <p className="text-[11px] font-semibold text-destructive mb-2 ml-1">⚠ {fieldErrors.price}</p>}
 
             {kind === "physical" && (
               <>
-                {!imageUrl && <p className="text-xs text-muted-foreground mb-2">📸 Product image required.</p>}
-                {imageUrl && (
-                  <div className="relative mb-2">
-                    <img src={imageUrl} alt="" className="rounded-xl max-h-40 w-full object-cover" />
-                    <button onClick={() => setImageUrl(null)} className="absolute top-1 right-1 h-7 w-7 rounded-full bg-foreground/70 text-background flex items-center justify-center"><X className="h-3.5 w-3.5" /></button>
-                  </div>
-                )}
+                <div
+                  ref={imageSlotRef}
+                  className={cn(
+                    "rounded-2xl mb-2 transition-all duration-300",
+                    fieldErrors.image && "ring-2 ring-destructive p-2 bg-destructive/5 animate-scale-in"
+                  )}
+                >
+                  {!imageUrl && <p className="text-xs text-muted-foreground">📸 Product image required.</p>}
+                  {imageUrl && (
+                    <div className="relative">
+                      <img src={imageUrl} alt="" className="rounded-xl max-h-40 w-full object-cover" />
+                      <button onClick={() => setImageUrl(null)} className="absolute top-1 right-1 h-7 w-7 rounded-full bg-foreground/70 text-background flex items-center justify-center"><X className="h-3.5 w-3.5" /></button>
+                    </div>
+                  )}
+                  {fieldErrors.image && <p className="text-[11px] font-semibold text-destructive mt-1">⚠ {fieldErrors.image}</p>}
+                </div>
                 <div className="flex gap-2">
                   <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickImage} />
-                  <button onClick={() => fileRef.current?.click()} disabled={uploading} className="h-12 w-12 rounded-2xl bg-secondary flex items-center justify-center disabled:opacity-50">
+                  <button onClick={() => { clearField("image"); fileRef.current?.click(); }} disabled={uploading} className="h-12 w-12 rounded-2xl bg-secondary flex items-center justify-center disabled:opacity-50">
                     <Paperclip className="h-5 w-5" />
                   </button>
-                  <button onClick={submit} disabled={busy || uploading || !title.trim() || !price.trim() || !imageUrl} className="flex-1 py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50 flex items-center justify-center gap-2">
+                  <button onClick={submit} disabled={busy || uploading} className="flex-1 py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50 flex items-center justify-center gap-2 transition-all duration-300">
                     {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "List for sale"}
                   </button>
                 </div>
@@ -598,19 +632,39 @@ export const MarketplaceScreen = () => {
                 <textarea value={previewText} onChange={(e) => setPreviewText(e.target.value)} maxLength={240} rows={2} placeholder="Public preview snippet (visible blurred to non-buyers)" className="w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none resize-none mb-2" />
 
                 {digitalType === "PDF_Notes" && (
-                  <>
-                    <input ref={pdfRef} type="file" accept="application/pdf" hidden onChange={pickPdf} />
-                    <button onClick={() => pdfRef.current?.click()} disabled={uploading} className="w-full mb-2 py-3 rounded-2xl bg-secondary text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50">
+                  <div
+                    ref={pdfSlotRef}
+                    className={cn(
+                      "rounded-2xl mb-2 transition-all duration-300",
+                      fieldErrors.pdf && "ring-2 ring-destructive p-1.5 bg-destructive/5 animate-scale-in"
+                    )}
+                  >
+                    <input ref={pdfRef} type="file" accept="application/pdf" hidden onChange={(e) => { clearField("pdf"); pickPdf(e); }} />
+                    <button onClick={() => pdfRef.current?.click()} disabled={uploading} className="w-full py-3 rounded-2xl bg-secondary text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50">
                       {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
                       {pdfPath ? `✓ ${pdfName}` : "Upload PDF (max 15MB)"}
                     </button>
-                  </>
+                    {fieldErrors.pdf && <p className="text-[11px] font-semibold text-destructive mt-1 ml-1">⚠ {fieldErrors.pdf}</p>}
+                  </div>
                 )}
                 {digitalType === "Live_Masterclass" && (
-                  <input value={meetingLink} onChange={(e) => setMeetingLink(e.target.value)} placeholder="Zoom / Google Meet link" className="w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none mb-2" />
+                  <div className="mb-2">
+                    <input
+                      ref={meetingRef}
+                      value={meetingLink}
+                      onChange={(e) => { setMeetingLink(e.target.value); clearField("meeting"); }}
+                      placeholder="Zoom / Google Meet link"
+                      aria-invalid={!!fieldErrors.meeting}
+                      className={cn(
+                        "w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none transition-all duration-300",
+                        fieldErrors.meeting && "ring-2 ring-destructive bg-destructive/5 animate-scale-in"
+                      )}
+                    />
+                    {fieldErrors.meeting && <p className="text-[11px] font-semibold text-destructive mt-1 ml-1">⚠ {fieldErrors.meeting}</p>}
+                  </div>
                 )}
 
-                <button onClick={submit} disabled={busy || uploading || !title.trim() || !price.trim()} className="w-full py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50 flex items-center justify-center gap-2">
+                <button onClick={submit} disabled={busy || uploading} className="w-full py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50 flex items-center justify-center gap-2 transition-all duration-300">
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publish material"}
                 </button>
                 <p className="text-[11px] text-muted-foreground mt-2">🔒 Buyers see a blurred preview. The PDF / link is only revealed after they unlock.</p>
