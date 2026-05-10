@@ -288,27 +288,68 @@ export const MarketplaceScreen = () => {
     } finally { setViewLoading(false); }
   };
 
-  const visible = view === "browse"
+  const visible = (view === "browse"
     ? items
-    : items.filter((it) => it.material && unlocked.has(it.material.id));
+    : items.filter((it) => it.material && unlocked.has(it.material.id))
+  ).filter((it) => {
+    if (kindFilter === "all") return true;
+    if (kindFilter === "digital") return it.category === "digital";
+    return it.category !== "digital";
+  });
 
   return (
     <div className="animate-fade-in-up">
       <Header title="Marketplace" subtitle="Buy & sell on campus" />
-      <div className="px-5 pt-3 flex items-center gap-2">
-        <button
-          onClick={() => setView("browse")}
-          className={cn("text-xs font-bold px-3 py-1.5 rounded-full transition-smooth",
-            view === "browse" ? "bg-foreground text-background" : "bg-secondary text-foreground")}
-        >Browse</button>
-        <button
-          onClick={() => setView("library")}
-          className={cn("text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 transition-smooth",
-            view === "library" ? "bg-foreground text-background" : "bg-secondary text-foreground")}
-        ><BookOpen className="h-3 w-3" /> My Classroom</button>
+      {/* Section nav with animated active underline (high saliency) */}
+      <div className="px-5 pt-3 flex items-center gap-1 relative">
+        {([
+          { id: "browse" as const, label: "Browse", icon: null },
+          { id: "library" as const, label: "My Classroom", icon: <BookOpen className="h-3 w-3" /> },
+        ]).map((t) => {
+          const active = view === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => { if (view !== t.id) { setView(t.id); triggerFilterFlicker(); } }}
+              className={cn(
+                "relative text-xs font-bold px-3 py-2 rounded-full inline-flex items-center gap-1 transition-all duration-300",
+                active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t.icon}{t.label}
+              <span
+                className={cn(
+                  "absolute left-2 right-2 -bottom-0.5 h-[3px] rounded-full bg-gradient-cta transition-all duration-300 origin-center",
+                  active ? "opacity-100 scale-x-100" : "opacity-0 scale-x-0"
+                )}
+              />
+            </button>
+          );
+        })}
         <div className="ml-auto badge-social-proof glow-warning inline-flex items-center gap-2 text-[11px] font-bold rounded-full px-3 py-1.5">
           <Eye className="h-3 w-3" /> {12 + (new Date().getHours() % 9) * 3} live
         </div>
+      </div>
+
+      {/* Category filter chips */}
+      <div className="px-5 pt-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+        {([
+          { id: "all" as const, label: "All" },
+          { id: "digital" as const, label: "Digital" },
+          { id: "physical" as const, label: "Physical" },
+        ]).map((c) => {
+          const active = kindFilter === c.id;
+          return (
+            <button
+              key={c.id}
+              onClick={() => { if (kindFilter !== c.id) { setKindFilter(c.id); triggerFilterFlicker(); } }}
+              className={cn(
+                "text-[11px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap transition-all duration-300",
+                active ? "bg-foreground text-background scale-105 shadow-soft" : "bg-secondary text-muted-foreground"
+              )}
+            >{c.label}</button>
+          );
+        })}
       </div>
       {view === "browse" && (
         <div className="px-5 pt-4">
@@ -322,10 +363,10 @@ export const MarketplaceScreen = () => {
       )}
 
       <div className="px-5 mt-4 space-y-3 pb-24">
-        {loading && (
+        {(loading || filtering) && (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-2xl glass-card p-4 flex gap-3 shadow-soft">
+              <div key={i} className="rounded-2xl glass-card p-4 flex gap-3 shadow-soft animate-fade-in-up" style={{ animationDuration: "200ms" }}>
                 <div className="h-20 w-20 rounded-xl bg-muted animate-pulse" />
                 <div className="flex-1 space-y-2 py-1">
                   <div className="h-3.5 w-2/3 rounded bg-muted animate-pulse" />
@@ -335,14 +376,14 @@ export const MarketplaceScreen = () => {
             ))}
           </div>
         )}
-        {!loading && visible.length === 0 && (
+        {!loading && !filtering && visible.length === 0 && (
           <div className="text-center py-12">
             {view === "library" ? <BookOpen className="mx-auto h-10 w-10 text-muted-foreground" /> : <ShoppingBag className="mx-auto h-10 w-10 text-muted-foreground" />}
             <p className="font-semibold mt-2">{view === "library" ? "Nothing unlocked yet" : "No listings yet"}</p>
             <p className="text-sm text-muted-foreground">{view === "library" ? "Unlock notes or masterclasses to see them here." : "Be the first to sell!"}</p>
           </div>
         )}
-        {visible.map((it, idx) => {
+        {!filtering && visible.map((it, idx) => {
           const mat = it.material;
           const isDigital = it.category === "digital" && mat;
           const isUnlocked = isDigital && (unlocked.has(mat!.id) || mat!.seller_id === user?.id);
@@ -392,9 +433,21 @@ export const MarketplaceScreen = () => {
                       <Lock className="h-6 w-6 text-white" />
                     </div>
                   )}
+                  {it.status === "sold" && (
+                    <div className="absolute inset-0 bg-destructive/85 flex items-center justify-center rotate-[-8deg]">
+                      <span className="text-white text-[10px] font-black tracking-[0.2em] uppercase border-2 border-white px-1.5 py-0.5 rounded">Sold out</span>
+                    </div>
+                  )}
                 </div>
               ) : it.image_url ? (
-                <img src={it.image_url} alt={it.title} className={cn("h-20 w-20 rounded-xl object-cover", it.status === "sold" && "grayscale")} />
+                <div className="relative h-20 w-20">
+                  <img src={it.image_url} alt={it.title} className={cn("h-20 w-20 rounded-xl object-cover", it.status === "sold" && "grayscale")} />
+                  {it.status === "sold" && (
+                    <div className="absolute inset-0 bg-destructive/75 rounded-xl flex items-center justify-center rotate-[-8deg]">
+                      <span className="text-white text-[10px] font-black tracking-[0.2em] uppercase border-2 border-white px-1.5 py-0.5 rounded">Sold out</span>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="h-20 w-20 rounded-xl bg-secondary flex items-center justify-center"><ShoppingBag className="h-6 w-6 text-muted-foreground" /></div>
               )}
