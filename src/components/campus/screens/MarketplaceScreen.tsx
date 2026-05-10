@@ -676,8 +676,12 @@ export const MarketplaceScreen = () => {
 
       {/* Unlocked content viewer */}
       {viewing && viewing.material && (
-        <div className="fixed inset-0 z-[110] bg-foreground/70 backdrop-blur-sm flex items-center justify-center p-3" onClick={() => setViewing(null)}>
-          <div className="bg-card rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col shadow-elevated" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[110] bg-foreground/70 backdrop-blur-sm flex items-center justify-center p-3 animate-fade-in-up" style={{ animationDuration: "300ms" }} onClick={() => setViewing(null)}>
+          <div
+            className="bg-card rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col shadow-elevated animate-scale-in"
+            style={{ animationDuration: "300ms" }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-4 border-b">
               <div className="min-w-0">
                 <p className="font-bold text-sm truncate">{viewing.title}</p>
