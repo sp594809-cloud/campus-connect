@@ -44,6 +44,10 @@ export const MarketplaceScreen = () => {
   const [items, setItems] = useState<Listing[]>([]);
   const [unlocked, setUnlocked] = useState<Set<string>>(new Set()); // material_ids
   const [loading, setLoading] = useState(true);
+  // Filter transition: brief skeleton flicker when switching tabs / filters so the
+  // change in result set is perceptible (counters change blindness).
+  const [filtering, setFiltering] = useState(false);
+  const [kindFilter, setKindFilter] = useState<"all" | "digital" | "physical">("all");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -64,6 +68,29 @@ export const MarketplaceScreen = () => {
   const pdfRef = useRef<HTMLInputElement>(null);
   const [confirmDel, setConfirmDel] = useState<Listing | null>(null);
   const [working, setWorking] = useState(false);
+
+  // Field-level error state for inline contextual error handling.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const titleRef = useRef<HTMLInputElement>(null);
+  const priceRef = useRef<HTMLInputElement>(null);
+  const imageSlotRef = useRef<HTMLDivElement>(null);
+  const pdfSlotRef = useRef<HTMLDivElement>(null);
+  const meetingRef = useRef<HTMLInputElement>(null);
+
+  const flagField = (key: string, message: string, ref?: React.RefObject<HTMLElement>) => {
+    setFieldErrors((p) => ({ ...p, [key]: message }));
+    requestAnimationFrame(() => {
+      ref?.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      ref?.current?.focus?.();
+    });
+  };
+  const clearField = (key: string) =>
+    setFieldErrors((p) => { if (!p[key]) return p; const n = { ...p }; delete n[key]; return n; });
+
+  const triggerFilterFlicker = () => {
+    setFiltering(true);
+    window.setTimeout(() => setFiltering(false), 220);
+  };
 
   // Viewer / unlocked content modal
   const [viewing, setViewing] = useState<Listing | null>(null);
@@ -122,15 +149,16 @@ export const MarketplaceScreen = () => {
 
   const submit = async () => {
     if (!user) { toast.error("Sign in to sell"); return; }
-    if (!title.trim()) { toast.error("Add a title"); return; }
+    setFieldErrors({});
+    if (!title.trim()) { flagField("title", "Title is required", titleRef); return; }
     const p = Number(price);
-    if (!price.trim() || isNaN(p) || p < 0) { toast.error("Enter a valid price"); return; }
+    if (!price.trim() || isNaN(p) || p < 0) { flagField("price", "Enter a valid price (0 for free)", priceRef); return; }
 
     if (kind === "physical") {
-      if (!imageUrl) { toast.error("Upload a product image"); return; }
+      if (!imageUrl) { flagField("image", "A product photo is required", imageSlotRef as React.RefObject<HTMLElement>); return; }
     } else {
-      if (digitalType === "PDF_Notes" && !pdfPath) { toast.error("Upload a PDF"); return; }
-      if (digitalType === "Live_Masterclass" && !meetingLink.trim()) { toast.error("Paste a meeting link"); return; }
+      if (digitalType === "PDF_Notes" && !pdfPath) { flagField("pdf", "Upload the PDF you want to sell", pdfSlotRef as React.RefObject<HTMLElement>); return; }
+      if (digitalType === "Live_Masterclass" && !meetingLink.trim()) { flagField("meeting", "Paste the Zoom / Meet link", meetingRef); return; }
     }
 
     setBusy(true);
