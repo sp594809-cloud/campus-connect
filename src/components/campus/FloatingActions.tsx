@@ -33,7 +33,7 @@ export const FloatingActions = ({ onChat }: { onChat?: () => void }) => {
         <button
           onClick={onChat}
           aria-label="Quick chat"
-          className="pointer-events-auto h-13 w-13 h-14 w-14 rounded-full bg-gradient-cta text-accent-foreground shadow-glow flex items-center justify-center animate-pulse-glow"
+          className="pointer-events-auto h-14 w-14 rounded-full bg-gradient-cta text-accent-foreground shadow-glow flex items-center justify-center animate-pulse-glow"
         >
           <MessageCircle className="h-6 w-6" strokeWidth={2.5} />
         </button>
