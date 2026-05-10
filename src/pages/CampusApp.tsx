@@ -12,6 +12,7 @@ import { MessagesScreen } from "@/components/campus/screens/MessagesScreen";
 import { MarketplaceScreen } from "@/components/campus/screens/MarketplaceScreen";
 import { RewardLayer } from "@/components/campus/RewardLayer";
 import { TierPill } from "@/components/campus/TierPill";
+import { FloatingActions } from "@/components/campus/FloatingActions";
 
 const CampusApp = () => {
   const navigate = useNavigate();
@@ -64,6 +65,7 @@ const CampusApp = () => {
         <MessagesScreen openWith={openWith} onClearOpen={() => setOpenWith(null)} />
       )}
       <BottomNav active={tab} onChange={setTab} />
+      <FloatingActions onChat={tab === "messages" ? undefined : () => setTab("messages")} />
     </PhoneShell>
   );
 };
