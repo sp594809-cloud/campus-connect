@@ -44,6 +44,10 @@ export const MarketplaceScreen = () => {
   const [items, setItems] = useState<Listing[]>([]);
   const [unlocked, setUnlocked] = useState<Set<string>>(new Set()); // material_ids
   const [loading, setLoading] = useState(true);
+  // Filter transition: brief skeleton flicker when switching tabs / filters so the
+  // change in result set is perceptible (counters change blindness).
+  const [filtering, setFiltering] = useState(false);
+  const [kindFilter, setKindFilter] = useState<"all" | "digital" | "physical">("all");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -64,6 +68,29 @@ export const MarketplaceScreen = () => {
   const pdfRef = useRef<HTMLInputElement>(null);
   const [confirmDel, setConfirmDel] = useState<Listing | null>(null);
   const [working, setWorking] = useState(false);
+
+  // Field-level error state for inline contextual error handling.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const titleRef = useRef<HTMLInputElement>(null);
+  const priceRef = useRef<HTMLInputElement>(null);
+  const imageSlotRef = useRef<HTMLDivElement>(null);
+  const pdfSlotRef = useRef<HTMLDivElement>(null);
+  const meetingRef = useRef<HTMLInputElement>(null);
+
+  const flagField = (key: string, message: string, ref?: React.RefObject<HTMLElement>) => {
+    setFieldErrors((p) => ({ ...p, [key]: message }));
+    requestAnimationFrame(() => {
+      ref?.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      ref?.current?.focus?.();
+    });
+  };
+  const clearField = (key: string) =>
+    setFieldErrors((p) => { if (!p[key]) return p; const n = { ...p }; delete n[key]; return n; });
+
+  const triggerFilterFlicker = () => {
+    setFiltering(true);
+    window.setTimeout(() => setFiltering(false), 220);
+  };
 
   // Viewer / unlocked content modal
   const [viewing, setViewing] = useState<Listing | null>(null);
@@ -122,15 +149,16 @@ export const MarketplaceScreen = () => {
 
   const submit = async () => {
     if (!user) { toast.error("Sign in to sell"); return; }
-    if (!title.trim()) { toast.error("Add a title"); return; }
+    setFieldErrors({});
+    if (!title.trim()) { flagField("title", "Title is required", titleRef); return; }
     const p = Number(price);
-    if (!price.trim() || isNaN(p) || p < 0) { toast.error("Enter a valid price"); return; }
+    if (!price.trim() || isNaN(p) || p < 0) { flagField("price", "Enter a valid price (0 for free)", priceRef); return; }
 
     if (kind === "physical") {
-      if (!imageUrl) { toast.error("Upload a product image"); return; }
+      if (!imageUrl) { flagField("image", "A product photo is required", imageSlotRef as React.RefObject<HTMLElement>); return; }
     } else {
-      if (digitalType === "PDF_Notes" && !pdfPath) { toast.error("Upload a PDF"); return; }
-      if (digitalType === "Live_Masterclass" && !meetingLink.trim()) { toast.error("Paste a meeting link"); return; }
+      if (digitalType === "PDF_Notes" && !pdfPath) { flagField("pdf", "Upload the PDF you want to sell", pdfSlotRef as React.RefObject<HTMLElement>); return; }
+      if (digitalType === "Live_Masterclass" && !meetingLink.trim()) { flagField("meeting", "Paste the Zoom / Meet link", meetingRef); return; }
     }
 
     setBusy(true);
@@ -260,27 +288,68 @@ export const MarketplaceScreen = () => {
     } finally { setViewLoading(false); }
   };
 
-  const visible = view === "browse"
+  const visible = (view === "browse"
     ? items
-    : items.filter((it) => it.material && unlocked.has(it.material.id));
+    : items.filter((it) => it.material && unlocked.has(it.material.id))
+  ).filter((it) => {
+    if (kindFilter === "all") return true;
+    if (kindFilter === "digital") return it.category === "digital";
+    return it.category !== "digital";
+  });
 
   return (
     <div className="animate-fade-in-up">
       <Header title="Marketplace" subtitle="Buy & sell on campus" />
-      <div className="px-5 pt-3 flex items-center gap-2">
-        <button
-          onClick={() => setView("browse")}
-          className={cn("text-xs font-bold px-3 py-1.5 rounded-full transition-smooth",
-            view === "browse" ? "bg-foreground text-background" : "bg-secondary text-foreground")}
-        >Browse</button>
-        <button
-          onClick={() => setView("library")}
-          className={cn("text-xs font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1 transition-smooth",
-            view === "library" ? "bg-foreground text-background" : "bg-secondary text-foreground")}
-        ><BookOpen className="h-3 w-3" /> My Classroom</button>
+      {/* Section nav with animated active underline (high saliency) */}
+      <div className="px-5 pt-3 flex items-center gap-1 relative">
+        {([
+          { id: "browse" as const, label: "Browse", icon: null },
+          { id: "library" as const, label: "My Classroom", icon: <BookOpen className="h-3 w-3" /> },
+        ]).map((t) => {
+          const active = view === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => { if (view !== t.id) { setView(t.id); triggerFilterFlicker(); } }}
+              className={cn(
+                "relative text-xs font-bold px-3 py-2 rounded-full inline-flex items-center gap-1 transition-all duration-300",
+                active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t.icon}{t.label}
+              <span
+                className={cn(
+                  "absolute left-2 right-2 -bottom-0.5 h-[3px] rounded-full bg-gradient-cta transition-all duration-300 origin-center",
+                  active ? "opacity-100 scale-x-100" : "opacity-0 scale-x-0"
+                )}
+              />
+            </button>
+          );
+        })}
         <div className="ml-auto badge-social-proof glow-warning inline-flex items-center gap-2 text-[11px] font-bold rounded-full px-3 py-1.5">
           <Eye className="h-3 w-3" /> {12 + (new Date().getHours() % 9) * 3} live
         </div>
+      </div>
+
+      {/* Category filter chips */}
+      <div className="px-5 pt-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+        {([
+          { id: "all" as const, label: "All" },
+          { id: "digital" as const, label: "Digital" },
+          { id: "physical" as const, label: "Physical" },
+        ]).map((c) => {
+          const active = kindFilter === c.id;
+          return (
+            <button
+              key={c.id}
+              onClick={() => { if (kindFilter !== c.id) { setKindFilter(c.id); triggerFilterFlicker(); } }}
+              className={cn(
+                "text-[11px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap transition-all duration-300",
+                active ? "bg-foreground text-background scale-105 shadow-soft" : "bg-secondary text-muted-foreground"
+              )}
+            >{c.label}</button>
+          );
+        })}
       </div>
       {view === "browse" && (
         <div className="px-5 pt-4">
@@ -294,10 +363,10 @@ export const MarketplaceScreen = () => {
       )}
 
       <div className="px-5 mt-4 space-y-3 pb-24">
-        {loading && (
+        {(loading || filtering) && (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-2xl glass-card p-4 flex gap-3 shadow-soft">
+              <div key={i} className="rounded-2xl glass-card p-4 flex gap-3 shadow-soft animate-fade-in-up" style={{ animationDuration: "200ms" }}>
                 <div className="h-20 w-20 rounded-xl bg-muted animate-pulse" />
                 <div className="flex-1 space-y-2 py-1">
                   <div className="h-3.5 w-2/3 rounded bg-muted animate-pulse" />
@@ -307,14 +376,14 @@ export const MarketplaceScreen = () => {
             ))}
           </div>
         )}
-        {!loading && visible.length === 0 && (
+        {!loading && !filtering && visible.length === 0 && (
           <div className="text-center py-12">
             {view === "library" ? <BookOpen className="mx-auto h-10 w-10 text-muted-foreground" /> : <ShoppingBag className="mx-auto h-10 w-10 text-muted-foreground" />}
             <p className="font-semibold mt-2">{view === "library" ? "Nothing unlocked yet" : "No listings yet"}</p>
             <p className="text-sm text-muted-foreground">{view === "library" ? "Unlock notes or masterclasses to see them here." : "Be the first to sell!"}</p>
           </div>
         )}
-        {visible.map((it, idx) => {
+        {!filtering && visible.map((it, idx) => {
           const mat = it.material;
           const isDigital = it.category === "digital" && mat;
           const isUnlocked = isDigital && (unlocked.has(mat!.id) || mat!.seller_id === user?.id);
@@ -364,9 +433,21 @@ export const MarketplaceScreen = () => {
                       <Lock className="h-6 w-6 text-white" />
                     </div>
                   )}
+                  {it.status === "sold" && (
+                    <div className="absolute inset-0 bg-destructive/85 flex items-center justify-center rotate-[-8deg]">
+                      <span className="text-white text-[10px] font-black tracking-[0.2em] uppercase border-2 border-white px-1.5 py-0.5 rounded">Sold out</span>
+                    </div>
+                  )}
                 </div>
               ) : it.image_url ? (
-                <img src={it.image_url} alt={it.title} className={cn("h-20 w-20 rounded-xl object-cover", it.status === "sold" && "grayscale")} />
+                <div className="relative h-20 w-20">
+                  <img src={it.image_url} alt={it.title} className={cn("h-20 w-20 rounded-xl object-cover", it.status === "sold" && "grayscale")} />
+                  {it.status === "sold" && (
+                    <div className="absolute inset-0 bg-destructive/75 rounded-xl flex items-center justify-center rotate-[-8deg]">
+                      <span className="text-white text-[10px] font-black tracking-[0.2em] uppercase border-2 border-white px-1.5 py-0.5 rounded">Sold out</span>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="h-20 w-20 rounded-xl bg-secondary flex items-center justify-center"><ShoppingBag className="h-6 w-6 text-muted-foreground" /></div>
               )}
@@ -470,33 +551,67 @@ export const MarketplaceScreen = () => {
               <button onClick={() => setKind("digital")} className={cn("py-2 rounded-xl text-xs font-bold", kind === "digital" ? "bg-card shadow-soft" : "text-muted-foreground")}>Digital · Notes/Class</button>
             </div>
 
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" maxLength={80} className="w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none mb-2" />
+            <div className="mb-2">
+              <input
+                ref={titleRef}
+                value={title}
+                onChange={(e) => { setTitle(e.target.value); clearField("title"); }}
+                placeholder="Title"
+                maxLength={80}
+                aria-invalid={!!fieldErrors.title}
+                className={cn(
+                  "w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none transition-all duration-300",
+                  fieldErrors.title && "ring-2 ring-destructive bg-destructive/5 animate-scale-in"
+                )}
+              />
+              {fieldErrors.title && <p className="text-[11px] font-semibold text-destructive mt-1 ml-1">⚠ {fieldErrors.title}</p>}
+            </div>
             <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={2} placeholder="Description" maxLength={500} className="w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none resize-none mb-2" />
 
-            <div className="flex gap-2 mb-2">
-              <input value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="Price ₹ (0 = free)" className="flex-1 px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none" />
+            <div className="flex gap-2 mb-1">
+              <input
+                ref={priceRef}
+                value={price}
+                onChange={(e) => { setPrice(e.target.value.replace(/[^0-9.]/g, "")); clearField("price"); }}
+                placeholder="Price ₹ (0 = free)"
+                aria-invalid={!!fieldErrors.price}
+                className={cn(
+                  "flex-1 px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none transition-all duration-300",
+                  fieldErrors.price && "ring-2 ring-destructive bg-destructive/5 animate-scale-in"
+                )}
+              />
               {kind === "physical" && (
                 <select value={category} onChange={(e) => setCategory(e.target.value)} className="px-3 py-3 rounded-2xl bg-secondary text-sm">
                   {PHYSICAL_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               )}
             </div>
+            {fieldErrors.price && <p className="text-[11px] font-semibold text-destructive mb-2 ml-1">⚠ {fieldErrors.price}</p>}
 
             {kind === "physical" && (
               <>
-                {!imageUrl && <p className="text-xs text-muted-foreground mb-2">📸 Product image required.</p>}
-                {imageUrl && (
-                  <div className="relative mb-2">
-                    <img src={imageUrl} alt="" className="rounded-xl max-h-40 w-full object-cover" />
-                    <button onClick={() => setImageUrl(null)} className="absolute top-1 right-1 h-7 w-7 rounded-full bg-foreground/70 text-background flex items-center justify-center"><X className="h-3.5 w-3.5" /></button>
-                  </div>
-                )}
+                <div
+                  ref={imageSlotRef}
+                  className={cn(
+                    "rounded-2xl mb-2 transition-all duration-300",
+                    fieldErrors.image && "ring-2 ring-destructive p-2 bg-destructive/5 animate-scale-in"
+                  )}
+                >
+                  {!imageUrl && <p className="text-xs text-muted-foreground">📸 Product image required.</p>}
+                  {imageUrl && (
+                    <div className="relative">
+                      <img src={imageUrl} alt="" className="rounded-xl max-h-40 w-full object-cover" />
+                      <button onClick={() => setImageUrl(null)} className="absolute top-1 right-1 h-7 w-7 rounded-full bg-foreground/70 text-background flex items-center justify-center"><X className="h-3.5 w-3.5" /></button>
+                    </div>
+                  )}
+                  {fieldErrors.image && <p className="text-[11px] font-semibold text-destructive mt-1">⚠ {fieldErrors.image}</p>}
+                </div>
                 <div className="flex gap-2">
                   <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickImage} />
-                  <button onClick={() => fileRef.current?.click()} disabled={uploading} className="h-12 w-12 rounded-2xl bg-secondary flex items-center justify-center disabled:opacity-50">
+                  <button onClick={() => { clearField("image"); fileRef.current?.click(); }} disabled={uploading} className="h-12 w-12 rounded-2xl bg-secondary flex items-center justify-center disabled:opacity-50">
                     <Paperclip className="h-5 w-5" />
                   </button>
-                  <button onClick={submit} disabled={busy || uploading || !title.trim() || !price.trim() || !imageUrl} className="flex-1 py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50 flex items-center justify-center gap-2">
+                  <button onClick={submit} disabled={busy || uploading} className="flex-1 py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50 flex items-center justify-center gap-2 transition-all duration-300">
                     {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "List for sale"}
                   </button>
                 </div>
@@ -517,19 +632,39 @@ export const MarketplaceScreen = () => {
                 <textarea value={previewText} onChange={(e) => setPreviewText(e.target.value)} maxLength={240} rows={2} placeholder="Public preview snippet (visible blurred to non-buyers)" className="w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none resize-none mb-2" />
 
                 {digitalType === "PDF_Notes" && (
-                  <>
-                    <input ref={pdfRef} type="file" accept="application/pdf" hidden onChange={pickPdf} />
-                    <button onClick={() => pdfRef.current?.click()} disabled={uploading} className="w-full mb-2 py-3 rounded-2xl bg-secondary text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50">
+                  <div
+                    ref={pdfSlotRef}
+                    className={cn(
+                      "rounded-2xl mb-2 transition-all duration-300",
+                      fieldErrors.pdf && "ring-2 ring-destructive p-1.5 bg-destructive/5 animate-scale-in"
+                    )}
+                  >
+                    <input ref={pdfRef} type="file" accept="application/pdf" hidden onChange={(e) => { clearField("pdf"); pickPdf(e); }} />
+                    <button onClick={() => pdfRef.current?.click()} disabled={uploading} className="w-full py-3 rounded-2xl bg-secondary text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50">
                       {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
                       {pdfPath ? `✓ ${pdfName}` : "Upload PDF (max 15MB)"}
                     </button>
-                  </>
+                    {fieldErrors.pdf && <p className="text-[11px] font-semibold text-destructive mt-1 ml-1">⚠ {fieldErrors.pdf}</p>}
+                  </div>
                 )}
                 {digitalType === "Live_Masterclass" && (
-                  <input value={meetingLink} onChange={(e) => setMeetingLink(e.target.value)} placeholder="Zoom / Google Meet link" className="w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none mb-2" />
+                  <div className="mb-2">
+                    <input
+                      ref={meetingRef}
+                      value={meetingLink}
+                      onChange={(e) => { setMeetingLink(e.target.value); clearField("meeting"); }}
+                      placeholder="Zoom / Google Meet link"
+                      aria-invalid={!!fieldErrors.meeting}
+                      className={cn(
+                        "w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none transition-all duration-300",
+                        fieldErrors.meeting && "ring-2 ring-destructive bg-destructive/5 animate-scale-in"
+                      )}
+                    />
+                    {fieldErrors.meeting && <p className="text-[11px] font-semibold text-destructive mt-1 ml-1">⚠ {fieldErrors.meeting}</p>}
+                  </div>
                 )}
 
-                <button onClick={submit} disabled={busy || uploading || !title.trim() || !price.trim()} className="w-full py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50 flex items-center justify-center gap-2">
+                <button onClick={submit} disabled={busy || uploading} className="w-full py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50 flex items-center justify-center gap-2 transition-all duration-300">
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publish material"}
                 </button>
                 <p className="text-[11px] text-muted-foreground mt-2">🔒 Buyers see a blurred preview. The PDF / link is only revealed after they unlock.</p>
@@ -541,8 +676,12 @@ export const MarketplaceScreen = () => {
 
       {/* Unlocked content viewer */}
       {viewing && viewing.material && (
-        <div className="fixed inset-0 z-[110] bg-foreground/70 backdrop-blur-sm flex items-center justify-center p-3" onClick={() => setViewing(null)}>
-          <div className="bg-card rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col shadow-elevated" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[110] bg-foreground/70 backdrop-blur-sm flex items-center justify-center p-3 animate-fade-in-up" style={{ animationDuration: "300ms" }} onClick={() => setViewing(null)}>
+          <div
+            className="bg-card rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col shadow-elevated animate-scale-in"
+            style={{ animationDuration: "300ms" }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-4 border-b">
               <div className="min-w-0">
                 <p className="font-bold text-sm truncate">{viewing.title}</p>
