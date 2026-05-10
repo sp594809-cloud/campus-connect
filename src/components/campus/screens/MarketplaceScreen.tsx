@@ -71,6 +71,9 @@ export const MarketplaceScreen = () => {
   const [viewSignedUrl, setViewSignedUrl] = useState<string | null>(null);
   const [viewMeetingLink, setViewMeetingLink] = useState<string | null>(null);
 
+  // Focused-transition state: which material just unlocked (for morph + saliency dim)
+  const [justUnlockedId, setJustUnlockedId] = useState<string | null>(null);
+
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -232,9 +235,13 @@ export const MarketplaceScreen = () => {
       buyer_id: user.id, material_id: it.material.id, listing_id: it.id,
     });
     if (error && !error.message.includes("duplicate")) { toast.error(error.message); return; }
-    setUnlocked((s) => new Set(s).add(it.material!.id));
-    toast.success("Unlocked! Opening…");
-    openContent(it);
+    const matId = it.material.id;
+    // Focused transition: morph button in place, dim siblings briefly, then open content.
+    setJustUnlockedId(matId);
+    setUnlocked((s) => new Set(s).add(matId));
+    // Stagger: morph first (340ms), then reveal content (prevents simultaneous change).
+    setTimeout(() => openContent(it), 360);
+    setTimeout(() => setJustUnlockedId((cur) => (cur === matId ? null : cur)), 1600);
   };
 
   const openContent = async (it: Listing) => {
@@ -307,12 +314,23 @@ export const MarketplaceScreen = () => {
             <p className="text-sm text-muted-foreground">{view === "library" ? "Unlock notes or masterclasses to see them here." : "Be the first to sell!"}</p>
           </div>
         )}
-        {visible.map((it) => {
+        {visible.map((it, idx) => {
           const mat = it.material;
           const isDigital = it.category === "digital" && mat;
           const isUnlocked = isDigital && (unlocked.has(mat!.id) || mat!.seller_id === user?.id);
+          const isFocus = isDigital && justUnlockedId === mat!.id;
+          const dimSibling = justUnlockedId !== null && !isFocus;
           return (
-            <article key={it.id} className={cn("relative rounded-2xl glass-card p-4 shadow-soft flex gap-3", it.status === "sold" && "opacity-95")}>
+            <article
+              key={it.id}
+              style={{ animationDelay: `${Math.min(idx, 8) * 60}ms` }}
+              className={cn(
+                "relative rounded-2xl glass-card p-4 shadow-soft flex gap-3 animate-fade-in-up transition-all duration-500",
+                it.status === "sold" && "opacity-95",
+                dimSibling && "opacity-40 blur-[1px] scale-[0.99]",
+                isFocus && "ring-2 ring-success/70 shadow-glow scale-[1.01]"
+              )}
+            >
               {it.status === "sold" && (
                 <span className="absolute -top-2 right-3 z-10 px-2.5 py-0.5 rounded-full badge-social-proof glow-warning text-[10px] font-black uppercase tracking-[0.15em] inline-flex items-center gap-1">
                   <CheckCircle2 className="h-2.5 w-2.5" /> Sold
@@ -377,17 +395,27 @@ export const MarketplaceScreen = () => {
                   {isDigital && !isUnlocked && (
                     <button
                       onClick={() => unlock(it)}
-                      className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-hero text-primary-foreground font-bold text-[11px] shadow-glow"
+                      className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-hero text-primary-foreground font-bold text-[11px] shadow-glow transition-all duration-300 hover:scale-[1.03]"
                     >
                       <Unlock className="h-3 w-3" /> Unlock {it.price > 0 ? `₹${it.price}` : "free"}
                     </button>
                   )}
                   {isDigital && isUnlocked && (
                     <button
+                      key={isFocus ? "morph" : "static"}
                       onClick={() => openContent(it)}
-                      className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-success text-success-foreground font-bold text-[11px]"
+                      className={cn(
+                        "ml-auto inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-success text-success-foreground font-bold text-[11px] transition-all duration-300 animate-scale-in",
+                        isFocus && "glow-success"
+                      )}
                     >
-                      {mat!.type === "PDF_Notes" ? <><Download className="h-3 w-3" /> Open notes</> : <><ExternalLink className="h-3 w-3" /> Join class</>}
+                      {isFocus ? (
+                        <><CheckCircle2 className="h-3 w-3" /> Unlocked</>
+                      ) : mat!.type === "PDF_Notes" ? (
+                        <><Download className="h-3 w-3" /> Open notes</>
+                      ) : (
+                        <><ExternalLink className="h-3 w-3" /> Join class</>
+                      )}
                     </button>
                   )}
 
