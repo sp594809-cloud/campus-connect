@@ -789,6 +789,9 @@ export const MarketplaceScreen = () => {
                 </a>
               </div>
             )}
+            {viewing.material.type === "PDF_Notes" && viewSignedUrl && (
+              <PdfAiPanel materialId={viewing.material.id} title={viewing.title} />
+            )}
           </div>
         </div>
       )}
