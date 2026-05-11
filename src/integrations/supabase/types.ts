@@ -615,6 +615,13 @@ export type Database = {
             referencedRelation: "study_materials"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "material_purchases_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "top_selling_materials"
+            referencedColumns: ["material_id"]
+          },
         ]
       }
       mentorship_requests: {
@@ -1005,6 +1012,13 @@ export type Database = {
             referencedRelation: "study_materials"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "study_material_secrets_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: true
+            referencedRelation: "top_selling_materials"
+            referencedColumns: ["material_id"]
+          },
         ]
       }
       study_materials: {
@@ -1071,7 +1085,25 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      top_selling_materials: {
+        Row: {
+          last_sale_at: string | null
+          listing_id: string | null
+          material_id: string | null
+          sales_count: number | null
+          seller_id: string | null
+          type: Database["public"]["Enums"]["study_material_type"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_materials_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       are_connected: { Args: { a: string; b: string }; Returns: boolean }
@@ -1095,6 +1127,8 @@ export type Database = {
         Args: { conv_id: string; uid: string }
         Returns: boolean
       }
+      purchase_material: { Args: { _material_id: string }; Returns: string }
+      refresh_top_selling_materials: { Args: never; Returns: undefined }
     }
     Enums: {
       application_source:
