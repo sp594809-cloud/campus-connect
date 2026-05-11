@@ -12,45 +12,35 @@ Deno.serve(async (req) => {
     const supa = admin();
 
     if (action === "search") {
-      // Semantic search across the user's purchased library.
+      // Semantic search across the user's purchased library (and own listings).
       const query = String(body?.query ?? "").trim();
       if (!query) return json({ results: [] });
       const embedding = await aiEmbed(query);
-      // Use service role + filter by purchase via RPC (RPC uses auth.uid() which is null
-      // under service role; instead query directly with userId filter).
-      const { data: rows, error } = await supa.rpc("search_my_library_for", {
-        _user: user.id,
-        query_embedding: embedding as unknown as string,
-        match_count: 12,
-      });
-      if (error) {
-        // Fallback: manual scoping
-        const { data: purchased } = await supa
-          .from("material_purchases")
-          .select("material_id")
-          .eq("buyer_id", user.id);
-        const ids = (purchased ?? []).map((r) => r.material_id);
-        const { data: owned } = await supa
-          .from("study_materials").select("id").eq("seller_id", user.id);
-        const allIds = [...new Set([...ids, ...(owned ?? []).map((r) => r.id)])];
-        if (allIds.length === 0) return json({ results: [] });
-        const { data: candidates } = await supa
-          .from("study_material_secrets")
-          .select("material_id, embedding")
-          .in("material_id", allIds)
-          .not("embedding", "is", null);
-        // Cosine similarity in JS as a safety net.
-        const dot = (a: number[], b: number[]) => a.reduce((s, v, i) => s + v * b[i], 0);
-        const norm = (a: number[]) => Math.sqrt(a.reduce((s, v) => s + v * v, 0));
-        const qn = norm(embedding);
-        const scored = (candidates ?? []).map((c) => {
-          const e = (c.embedding as unknown as number[]) ?? [];
-          const sim = e.length ? dot(e, embedding) / (norm(e) * qn || 1) : 0;
-          return { material_id: c.material_id, similarity: sim };
-        }).sort((a, b) => b.similarity - a.similarity).slice(0, 12);
-        return json({ results: scored });
-      }
-      return json({ results: rows ?? [] });
+      const { data: purchased } = await supa
+        .from("material_purchases").select("material_id").eq("buyer_id", user.id);
+      const { data: owned } = await supa
+        .from("study_materials").select("id").eq("seller_id", user.id);
+      const allIds = [
+        ...new Set([
+          ...(purchased ?? []).map((r) => r.material_id),
+          ...(owned ?? []).map((r) => r.id),
+        ]),
+      ];
+      if (allIds.length === 0) return json({ results: [] });
+      const { data: candidates } = await supa
+        .from("study_material_secrets")
+        .select("material_id, embedding")
+        .in("material_id", allIds)
+        .not("embedding", "is", null);
+      const dot = (a: number[], b: number[]) => a.reduce((s, v, i) => s + v * b[i], 0);
+      const norm = (a: number[]) => Math.sqrt(a.reduce((s, v) => s + v * v, 0));
+      const qn = norm(embedding) || 1;
+      const scored = (candidates ?? []).map((c) => {
+        const e = (c.embedding as unknown as number[]) ?? [];
+        const sim = e.length ? dot(e, embedding) / ((norm(e) || 1) * qn) : 0;
+        return { material_id: c.material_id, similarity: sim };
+      }).sort((a, b) => b.similarity - a.similarity).slice(0, 12);
+      return json({ results: scored });
     }
 
     // All other actions need a material_id + access check.
