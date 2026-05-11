@@ -394,6 +394,34 @@ export const MarketplaceScreen = () => {
           </button>
         </div>
       )}
+      {view === "library" && (
+        <div className="px-5 pt-4">
+          <form
+            onSubmit={(e) => { e.preventDefault(); runSemanticSearch(); }}
+            className="flex items-center gap-2 bg-secondary rounded-2xl px-3 py-2"
+          >
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <input
+              value={librarySearch}
+              onChange={(e) => { setLibrarySearch(e.target.value); if (!e.target.value) setSemanticHits(null); }}
+              placeholder="Search inside your notes — e.g. ‘second law of thermodynamics’"
+              className="flex-1 bg-transparent text-xs outline-none"
+            />
+            {librarySearching ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+            ) : semanticHits ? (
+              <button type="button" onClick={() => { setLibrarySearch(""); setSemanticHits(null); }} className="text-[10px] font-bold text-muted-foreground">Clear</button>
+            ) : (
+              <button type="submit" className="text-[10px] font-bold text-primary">Search</button>
+            )}
+          </form>
+          {semanticHits && (
+            <p className="text-[10px] text-muted-foreground mt-1.5 px-1">
+              {semanticHits.length} semantic match{semanticHits.length === 1 ? "" : "es"} across your purchased notes
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="px-5 mt-4 space-y-3 pb-24">
         {(loading || filtering) && (
