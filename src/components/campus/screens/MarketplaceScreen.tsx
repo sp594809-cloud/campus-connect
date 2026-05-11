@@ -259,10 +259,12 @@ export const MarketplaceScreen = () => {
       toast.message("This is your own listing.");
       return;
     }
-    const { error } = await supabase.from("material_purchases").insert({
-      buyer_id: user.id, material_id: it.material.id, listing_id: it.id,
+    // Optimistic-locking buy: atomic on the server. Prevents two students
+    // from racing on the last available item.
+    const { error } = await supabase.rpc("purchase_material", {
+      _material_id: it.material.id,
     });
-    if (error && !error.message.includes("duplicate")) { toast.error(error.message); return; }
+    if (error) { toast.error(error.message); return; }
     const matId = it.material.id;
     // Focused transition: morph button in place, dim siblings briefly, then open content.
     setJustUnlockedId(matId);
