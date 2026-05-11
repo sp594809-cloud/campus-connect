@@ -10,6 +10,8 @@ import { fetchProfilesByIds } from "@/lib/api/profiles";
 import { Eye, Flame, Sparkles } from "lucide-react";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { cn } from "@/lib/utils";
+import { PdfAiPanel } from "../PdfAiPanel";
+import { Search } from "lucide-react";
 
 interface Listing {
   id: string;
@@ -100,6 +102,27 @@ export const MarketplaceScreen = () => {
 
   // Focused-transition state: which material just unlocked (for morph + saliency dim)
   const [justUnlockedId, setJustUnlockedId] = useState<string | null>(null);
+
+  // Semantic library search (pgvector)
+  const [librarySearch, setLibrarySearch] = useState("");
+  const [librarySearching, setLibrarySearching] = useState(false);
+  const [semanticHits, setSemanticHits] = useState<{ material_id: string; similarity: number }[] | null>(null);
+
+  const runSemanticSearch = async () => {
+    const q = librarySearch.trim();
+    if (!q) { setSemanticHits(null); return; }
+    setLibrarySearching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("material-ai", {
+        body: { action: "search", query: q },
+      });
+      if (error) throw error;
+      const r = ((data as { results?: { material_id: string; similarity: number }[] })?.results) ?? [];
+      setSemanticHits(r);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Search failed");
+    } finally { setLibrarySearching(false); }
+  };
 
   const load = async () => {
     setLoading(true);
