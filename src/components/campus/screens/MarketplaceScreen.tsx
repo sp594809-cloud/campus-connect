@@ -10,6 +10,8 @@ import { fetchProfilesByIds } from "@/lib/api/profiles";
 import { Eye, Flame, Sparkles } from "lucide-react";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { cn } from "@/lib/utils";
+import { PdfAiPanel } from "../PdfAiPanel";
+import { Search } from "lucide-react";
 
 interface Listing {
   id: string;
@@ -100,6 +102,27 @@ export const MarketplaceScreen = () => {
 
   // Focused-transition state: which material just unlocked (for morph + saliency dim)
   const [justUnlockedId, setJustUnlockedId] = useState<string | null>(null);
+
+  // Semantic library search (pgvector)
+  const [librarySearch, setLibrarySearch] = useState("");
+  const [librarySearching, setLibrarySearching] = useState(false);
+  const [semanticHits, setSemanticHits] = useState<{ material_id: string; similarity: number }[] | null>(null);
+
+  const runSemanticSearch = async () => {
+    const q = librarySearch.trim();
+    if (!q) { setSemanticHits(null); return; }
+    setLibrarySearching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("material-ai", {
+        body: { action: "search", query: q },
+      });
+      if (error) throw error;
+      const r = ((data as { results?: { material_id: string; similarity: number }[] })?.results) ?? [];
+      setSemanticHits(r);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Search failed");
+    } finally { setLibrarySearching(false); }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -290,10 +313,18 @@ export const MarketplaceScreen = () => {
     } finally { setViewLoading(false); }
   };
 
-  const visible = (view === "browse"
+  const libraryItems = items.filter((it) => it.material && unlocked.has(it.material.id));
+  const semanticOrder = semanticHits && view === "library"
+    ? new Map(semanticHits.map((h, i) => [h.material_id, i]))
+    : null;
+  const baseList = view === "browse"
     ? items
-    : items.filter((it) => it.material && unlocked.has(it.material.id))
-  ).filter((it) => {
+    : (semanticOrder
+        ? libraryItems
+            .filter((it) => it.material && semanticOrder.has(it.material.id))
+            .sort((a, b) => (semanticOrder.get(a.material!.id)! - semanticOrder.get(b.material!.id)!))
+        : libraryItems);
+  const visible = baseList.filter((it) => {
     if (kindFilter === "all") return true;
     if (kindFilter === "digital") return it.category === "digital";
     return it.category !== "digital";
@@ -361,6 +392,34 @@ export const MarketplaceScreen = () => {
           >
             <Plus className="h-4 w-4" /> Sell something
           </button>
+        </div>
+      )}
+      {view === "library" && (
+        <div className="px-5 pt-4">
+          <form
+            onSubmit={(e) => { e.preventDefault(); runSemanticSearch(); }}
+            className="flex items-center gap-2 bg-secondary rounded-2xl px-3 py-2"
+          >
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <input
+              value={librarySearch}
+              onChange={(e) => { setLibrarySearch(e.target.value); if (!e.target.value) setSemanticHits(null); }}
+              placeholder="Search inside your notes — e.g. ‘second law of thermodynamics’"
+              className="flex-1 bg-transparent text-xs outline-none"
+            />
+            {librarySearching ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+            ) : semanticHits ? (
+              <button type="button" onClick={() => { setLibrarySearch(""); setSemanticHits(null); }} className="text-[10px] font-bold text-muted-foreground">Clear</button>
+            ) : (
+              <button type="submit" className="text-[10px] font-bold text-primary">Search</button>
+            )}
+          </form>
+          {semanticHits && (
+            <p className="text-[10px] text-muted-foreground mt-1.5 px-1">
+              {semanticHits.length} semantic match{semanticHits.length === 1 ? "" : "es"} across your purchased notes
+            </p>
+          )}
         </div>
       )}
 
@@ -729,6 +788,9 @@ export const MarketplaceScreen = () => {
                   <Download className="h-3 w-3" /> Open in new tab
                 </a>
               </div>
+            )}
+            {viewing.material.type === "PDF_Notes" && viewSignedUrl && (
+              <PdfAiPanel materialId={viewing.material.id} title={viewing.title} />
             )}
           </div>
         </div>
