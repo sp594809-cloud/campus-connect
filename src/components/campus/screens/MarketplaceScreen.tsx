@@ -313,10 +313,18 @@ export const MarketplaceScreen = () => {
     } finally { setViewLoading(false); }
   };
 
-  const visible = (view === "browse"
+  const libraryItems = items.filter((it) => it.material && unlocked.has(it.material.id));
+  const semanticOrder = semanticHits && view === "library"
+    ? new Map(semanticHits.map((h, i) => [h.material_id, i]))
+    : null;
+  const baseList = view === "browse"
     ? items
-    : items.filter((it) => it.material && unlocked.has(it.material.id))
-  ).filter((it) => {
+    : (semanticOrder
+        ? libraryItems
+            .filter((it) => it.material && semanticOrder.has(it.material.id))
+            .sort((a, b) => (semanticOrder.get(a.material!.id)! - semanticOrder.get(b.material!.id)!))
+        : libraryItems);
+  const visible = baseList.filter((it) => {
     if (kindFilter === "all") return true;
     if (kindFilter === "digital") return it.category === "digital";
     return it.category !== "digital";
