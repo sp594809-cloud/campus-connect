@@ -35,8 +35,15 @@ Deno.serve(async (req) => {
       const dot = (a: number[], b: number[]) => a.reduce((s, v, i) => s + v * b[i], 0);
       const norm = (a: number[]) => Math.sqrt(a.reduce((s, v) => s + v * v, 0));
       const qn = norm(embedding) || 1;
+      const parseVec = (v: unknown): number[] => {
+        if (Array.isArray(v)) return v as number[];
+        if (typeof v === "string") {
+          try { return JSON.parse(v); } catch { return []; }
+        }
+        return [];
+      };
       const scored = (candidates ?? []).map((c) => {
-        const e = (c.embedding as unknown as number[]) ?? [];
+        const e = parseVec(c.embedding);
         const sim = e.length ? dot(e, embedding) / ((norm(e) || 1) * qn) : 0;
         return { material_id: c.material_id, similarity: sim };
       }).sort((a, b) => b.similarity - a.similarity).slice(0, 12);
