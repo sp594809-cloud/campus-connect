@@ -987,19 +987,25 @@ export type Database = {
       }
       study_material_secrets: {
         Row: {
+          content_text: string | null
           created_at: string
+          embedding: string | null
           material_id: string
           meeting_link: string | null
           pdf_path: string | null
         }
         Insert: {
+          content_text?: string | null
           created_at?: string
+          embedding?: string | null
           material_id: string
           meeting_link?: string | null
           pdf_path?: string | null
         }
         Update: {
+          content_text?: string | null
           created_at?: string
+          embedding?: string | null
           material_id?: string
           meeting_link?: string | null
           pdf_path?: string | null
@@ -1129,6 +1135,14 @@ export type Database = {
       }
       purchase_material: { Args: { _material_id: string }; Returns: string }
       refresh_top_selling_materials: { Args: never; Returns: undefined }
+      search_my_library: {
+        Args: { match_count?: number; query_embedding: string }
+        Returns: {
+          listing_id: string
+          material_id: string
+          similarity: number
+        }[]
+      }
     }
     Enums: {
       application_source:
