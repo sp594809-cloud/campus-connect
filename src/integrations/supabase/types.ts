@@ -108,6 +108,13 @@ export type Database = {
             foreignKeyName: "community_members_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -227,7 +234,21 @@ export type Database = {
             foreignKeyName: "conversations_user_a_fkey"
             columns: ["user_a"]
             isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_user_a_fkey"
+            columns: ["user_a"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_user_b_fkey"
+            columns: ["user_b"]
+            isOneToOne: false
+            referencedRelation: "employability_score_view"
             referencedColumns: ["id"]
           },
           {
@@ -318,6 +339,13 @@ export type Database = {
             foreignKeyName: "event_rsvps_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_rsvps_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -358,6 +386,13 @@ export type Database = {
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "events_created_by_fkey"
             columns: ["created_by"]
@@ -657,7 +692,21 @@ export type Database = {
             foreignKeyName: "mentorship_requests_mentor_id_fkey"
             columns: ["mentor_id"]
             isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentorship_requests_mentor_id_fkey"
+            columns: ["mentor_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentorship_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "employability_score_view"
             referencedColumns: ["id"]
           },
           {
@@ -706,6 +755,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "employability_score_view"
             referencedColumns: ["id"]
           },
           {
@@ -807,6 +863,13 @@ export type Database = {
             foreignKeyName: "post_likes_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -851,6 +914,13 @@ export type Database = {
             foreignKeyName: "posts_author_id_fkey"
             columns: ["author_id"]
             isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -862,9 +932,11 @@ export type Database = {
           bio: string | null
           branch: Database["public"]["Enums"]["branch_type"] | null
           college_email_verified: boolean
+          college_name: string | null
           company: string | null
           created_at: string
           github: string | null
+          graduation_year: number | null
           id: string
           interests: string[]
           karma_total: number
@@ -877,8 +949,11 @@ export type Database = {
           onboarded: boolean
           open_to_mentor: boolean
           placement_status: Database["public"]["Enums"]["placement_status"]
+          resume_url: string | null
           skills: string[]
           updated_at: string
+          username: string | null
+          verified: boolean
           weekly_capacity: number
           year: Database["public"]["Enums"]["year_type"] | null
         }
@@ -887,9 +962,11 @@ export type Database = {
           bio?: string | null
           branch?: Database["public"]["Enums"]["branch_type"] | null
           college_email_verified?: boolean
+          college_name?: string | null
           company?: string | null
           created_at?: string
           github?: string | null
+          graduation_year?: number | null
           id: string
           interests?: string[]
           karma_total?: number
@@ -902,8 +979,11 @@ export type Database = {
           onboarded?: boolean
           open_to_mentor?: boolean
           placement_status?: Database["public"]["Enums"]["placement_status"]
+          resume_url?: string | null
           skills?: string[]
           updated_at?: string
+          username?: string | null
+          verified?: boolean
           weekly_capacity?: number
           year?: Database["public"]["Enums"]["year_type"] | null
         }
@@ -912,9 +992,11 @@ export type Database = {
           bio?: string | null
           branch?: Database["public"]["Enums"]["branch_type"] | null
           college_email_verified?: boolean
+          college_name?: string | null
           company?: string | null
           created_at?: string
           github?: string | null
+          graduation_year?: number | null
           id?: string
           interests?: string[]
           karma_total?: number
@@ -927,10 +1009,61 @@ export type Database = {
           onboarded?: boolean
           open_to_mentor?: boolean
           placement_status?: Database["public"]["Enums"]["placement_status"]
+          resume_url?: string | null
           skills?: string[]
           updated_at?: string
+          username?: string | null
+          verified?: boolean
           weekly_capacity?: number
           year?: Database["public"]["Enums"]["year_type"] | null
+        }
+        Relationships: []
+      }
+      recruiter_notes: {
+        Row: {
+          created_at: string
+          id: string
+          note: string
+          recruiter_id: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string
+          recruiter_id: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string
+          recruiter_id?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
+      recruiter_saved_candidates: {
+        Row: {
+          created_at: string
+          id: string
+          recruiter_id: string
+          shortlisted: boolean
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recruiter_id: string
+          shortlisted?: boolean
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recruiter_id?: string
+          shortlisted?: boolean
+          student_id?: string
         }
         Relationships: []
       }
@@ -1068,6 +1201,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       verified_students: {
         Row: {
           created_at: string | null
@@ -1091,6 +1245,32 @@ export type Database = {
       }
     }
     Views: {
+      employability_score_view: {
+        Row: {
+          avatar_url: string | null
+          branch: Database["public"]["Enums"]["branch_type"] | null
+          college_name: string | null
+          company: string | null
+          current_streak: number | null
+          employability_score: number | null
+          graduation_year: number | null
+          id: string | null
+          interview_posts_count: number | null
+          karma_total: number | null
+          longest_streak: number | null
+          name: string | null
+          placement_status:
+            | Database["public"]["Enums"]["placement_status"]
+            | null
+          posts_count: number | null
+          skills: string[] | null
+          total_completed: number | null
+          username: string | null
+          verified: boolean | null
+          year: Database["public"]["Enums"]["year_type"] | null
+        }
+        Relationships: []
+      }
       top_selling_materials: {
         Row: {
           last_sale_at: string | null
@@ -1116,6 +1296,13 @@ export type Database = {
       get_or_create_conversation: {
         Args: { other_user: string }
         Returns: string
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
       }
       has_unlocked_material: {
         Args: { _mid: string; _uid: string }
@@ -1145,6 +1332,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "student" | "recruiter" | "admin"
       application_source:
         | "tpo"
         | "referral"
@@ -1311,6 +1499,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["student", "recruiter", "admin"],
       application_source: [
         "tpo",
         "referral",

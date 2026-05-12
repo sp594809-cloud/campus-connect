@@ -16,6 +16,9 @@ import InterviewExperienceDetail from "./pages/InterviewExperienceDetail.tsx";
 import InterviewCompare from "./pages/InterviewCompare.tsx";
 import MentorDirectory from "./pages/MentorDirectory.tsx";
 import Karma from "./pages/Karma.tsx";
+import Passport from "./pages/Passport.tsx";
+import RecruiterDashboard from "./pages/RecruiterDashboard.tsx";
+import RecruiterStudentDetail from "./pages/RecruiterStudentDetail.tsx";
 import { Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -43,6 +46,9 @@ const App = () => (
             <Route path="/interview/:id" element={<InterviewExperienceDetail />} />
             <Route path="/mentors" element={<MentorDirectory />} />
             <Route path="/karma" element={<Karma />} />
+            <Route path="/passport/:slug" element={<Passport />} />
+            <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
+            <Route path="/recruiter/student/:id" element={<RecruiterStudentDetail />} />
             <Route path="/app" element={<Navigate to="/campus" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
