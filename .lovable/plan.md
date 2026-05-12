@@ -1,37 +1,74 @@
-The OTP logic itself is mostly working: student lookup, registration checks, OTP generation, and rate limiting are in place. The current blocker is SMS delivery. The backend logs show Twilio is rejecting the request with `401 Authentication Error - invalid username`, which means the saved Twilio Account SID/Auth Token combination is not accepted by Twilio.
+## Overview
 
-Plan to resolve it:
+Two large modules requested:
+1. **Employability Passport** — public student profile with Proof-of-Work visualizations
+2. **Recruiter Dashboard** — recruiter-only talent discovery with leaderboard, filters, analytics
 
-1. Stop the preview from crashing on OTP failures
-   - Keep all OTP responses as structured JSON.
-   - Return user-friendly errors for SMS provider failures instead of raw 502 runtime errors.
-   - Ensure the frontend treats `ok: false` responses as normal form errors, not app-breaking failures.
+Both depend on existing tables (`profiles`, `karma_events`, `dsa_streaks`, `dsa_completions`, `posts`). Before I build, I need a few decisions because the spec references columns and roles that don't currently exist in your schema.
 
-2. Harden the OTP backend function
-   - Expand CORS headers to include all headers sent by the current frontend client.
-   - Validate request input more strictly: phone number, mode, and supported country format.
-   - Delete the generated OTP record if SMS sending fails, so failed sends do not count as valid OTPs.
-   - Keep rate limiting active to prevent SMS abuse.
+---
 
-3. Fix the real SMS provider connection
-   - Re-test the currently saved Twilio credentials.
-   - If Twilio still returns `401`, the code cannot fix that by itself; the Twilio credentials must be corrected.
-   - Preferred path: connect Twilio through Lovable’s managed connector so Account SID/Auth handling is managed more safely.
-   - Alternative path: update `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER` with valid Twilio values.
+## Schema gaps I need to resolve
 
-4. Improve the frontend OTP UX
-   - Show a clear setup/delivery message such as: “SMS delivery is not configured correctly. Please contact admin.”
-   - Prevent blank screens or runtime overlays for OTP provider errors.
-   - Keep “number not in college records”, “already registered”, and “too many requests” as normal inline errors.
+The spec asks for fields/roles that aren't in the database today:
 
-5. Test end-to-end
-   - Test with a valid roster number such as `8200307992`.
-   - Confirm the backend returns either `ok: true` with a masked number or a readable provider setup error.
-   - Once Twilio accepts the credentials, verify that the OTP SMS arrives and `verify-otp` completes registration/login.
+| Requested | Status in DB | Proposed handling |
+|---|---|---|
+| `username`, `college_name`, `graduation_year`, `verified` on profiles | Not present | Add columns to `profiles` (nullable). Use `profile.id` as the route slug if `username` is empty. |
+| `role = 'recruiter'` | No roles table | Create `app_role` enum (`student`, `recruiter`, `admin`) + `user_roles` table + `has_role()` SECURITY DEFINER function (per security best-practice). |
+| Recruiter saved candidates / notes / shortlist | Not present | New tables: `recruiter_saved_candidates`, `recruiter_notes`. |
+| Karma category mapping (interview_experience, mentorship, etc.) | `karma_events.action` enum exists with different values | Map existing actions → display categories in the frontend. |
 
-Important: if Twilio continues returning `401`, we should not keep changing OTP logic. The required next action is to correct or reconnect the Twilio credentials, because Twilio is refusing authentication before any SMS can be sent.
+---
 
-<lov-actions>
-<lov-open-history>View History</lov-open-history>
-<lov-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</lov-link>
-</lov-actions>
+## Plan
+
+### Phase 1 — Migration
+- Add `username` (unique, nullable), `college_name`, `graduation_year`, `verified` to `profiles`.
+- Create `app_role` enum + `user_roles` table + `has_role(uuid, app_role)` function + RLS.
+- Create `recruiter_saved_candidates` and `recruiter_notes` (RLS: recruiter-only).
+- Add indexes: `profiles(karma_total DESC)`, `profiles(branch)`, GIN on `profiles(skills)`, `profiles(placement_status)`.
+- Create SQL view `employability_score_view` aggregating karma + streak + post counts per profile.
+
+### Phase 2 — Employability Passport (`/passport/:slug`)
+Reusable components in `src/components/passport/`:
+- `PassportHeader.tsx` — avatar, name, branch, college, placement, karma, verified badge, CTAs (Connect / Message / Download Resume / Verify).
+- `EmployabilityScoreCard.tsx` — weighted score (0–100) with 4 sub-bars (Consistency, Peer Contribution, Technical Discipline, Community Impact).
+- `KarmaHeatmap.tsx` — GitHub-style 365-day grid from `karma_events`, color-coded by category, intensity by daily points.
+- `StreakCalendar.tsx` — month-grid of `dsa_completions` with current/longest streak stats and animated flame.
+- `PlacementTimeline.tsx` — vertical timeline from `posts` filtered by relevant tags/types.
+- `RecruiterInsightCard.tsx` — auto-generated insight bullets from frontend logic.
+- Skeletons + empty states for every section.
+
+Page: `src/pages/Passport.tsx`. Route added to `App.tsx`. Public read (RLS already permits authenticated SELECT on profiles).
+
+### Phase 3 — Recruiter Dashboard (`/recruiter/dashboard`, `/recruiter/student/:id`)
+- `RecruiterGuard` HOC checks `has_role(uid, 'recruiter')`; otherwise redirect.
+- `src/pages/RecruiterDashboard.tsx`:
+  - Overview metric cards (active students, 30+ streak, top karma, most active branch, verified, recently placed).
+  - `RecruiterLeaderboard.tsx` — sortable, paginated, infinite scroll on `employability_score_view`.
+  - `TalentFilters.tsx` — branch / year / placement / verified / skills / streak range / karma range.
+  - Full-text search (ILIKE on name + skills + branch).
+- `src/pages/RecruiterStudentDetail.tsx`:
+  - Reuses Passport components + recruiter-only analytics panel + actions (Save / Contact / Invite / Shortlist / Note).
+- `EmployabilityRadar.tsx` (Recharts radar of 4 sub-scores).
+- `SkillAnalytics.tsx` (top skills by branch, frequency bar chart).
+- `CandidateCard.tsx` for grid view.
+
+### Phase 4 — Polish
+- Dark/light mode using existing semantic tokens (no raw colors).
+- Mobile responsive.
+- All Supabase queries typed via generated `Database` types.
+
+---
+
+## Clarifying questions (please answer before I build)
+
+I need 3 quick answers — see the questions panel.
+
+## Technical notes
+- Recharts is not yet installed; I'll add it.
+- Heatmap will be hand-rolled with Tailwind grid (no extra dep).
+- Roles enforced via `has_role()` SECURITY DEFINER function in RLS — no client-side role checks.
+- "Download Resume" will be a placeholder button unless you point to a resume field/bucket.
+- "Verify Student" button will only be visible/functional for users with `admin` role.
