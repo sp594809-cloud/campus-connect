@@ -1222,27 +1222,6 @@ export type Database = {
         }
         Relationships: []
       }
-      verified_students: {
-        Row: {
-          created_at: string | null
-          enrollment_id: string | null
-          id: string
-          mobile_number: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          enrollment_id?: string | null
-          id?: string
-          mobile_number?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          enrollment_id?: string | null
-          id?: string
-          mobile_number?: string | null
-        }
-        Relationships: []
-      }
     }
     Views: {
       employability_score_view: {
