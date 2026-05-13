@@ -1,19 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { PublicProfile } from "@/hooks/useProfiles";
+import type { PublicProfile, MiniProfile } from "@/core/types";
 
 export const PROFILE_PUBLIC_COLS =
   "id,name,branch,year,bio,avatar_url,interests,skills,open_to_mentor,looking_for_mentor_in,placement_status,company,college_email_verified";
 
 export const PROFILE_MINI_COLS = "id,name,avatar_url,branch,year";
-
-export interface MiniProfile {
-  id: string;
-  name: string;
-  avatar_url: string | null;
-  branch?: string | null;
-  year?: string | null;
-}
 
 export async function fetchProfilesByIds(ids: string[]): Promise<MiniProfile[]> {
   if (!ids.length) return [];
