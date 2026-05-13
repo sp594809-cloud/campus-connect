@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, GraduationCap, MessageCircle, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { avatarFor, type PublicProfile } from "@/hooks/useProfiles";
+import { avatarFor } from "@/hooks/useProfiles";
+import type { PublicProfile } from "@/core/types";
 import { cn } from "@/lib/utils";
 
 interface Mentor extends PublicProfile {
@@ -71,7 +72,7 @@ const MentorDirectory = () => {
                     <p className="text-xs text-muted-foreground flex items-center gap-1"><GraduationCap className="h-3 w-3" />{m.branch ?? "—"} · {m.year ?? "—"} year</p>
                     {m.placement_status === "Placed" && m.company && <p className="text-xs text-success font-semibold mt-0.5">@ {m.company}</p>}
                   </div>
-                  <button disabled={!user || user.id === m.id} onClick={() => nav(`/campus`)} className="px-3 py-2 rounded-full bg-gradient-hero text-primary-foreground text-xs font-semibold shadow-soft disabled:opacity-50 flex items-center gap-1">
+                  <button disabled={!user || user.id === m.id} onClick={() => nav(`/campus`)} className="px-3 py-2 rounded-full bg-gradient-hero text-primary-foreground text-xs font-semibold shadow-soft hover:opacity-90 transition-smooth disabled:opacity-50 disabled:cursor-not-allowed">
                     <MessageCircle className="h-3.5 w-3.5" /> Chat
                   </button>
                 </div>
