@@ -1,16 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-
-export type ConnState = "none" | "pending_out" | "pending_in" | "accepted" | "declined";
-export interface ConnRow {
-  id: string;
-  requester_id: string;
-  recipient_id: string;
-  status: "pending" | "accepted" | "declined";
-  message: string;
-  created_at: string;
-}
+import type { ConnState, ConnRow } from "@/core/types";
 
 export const useConnections = () => {
   const { user } = useAuth();
@@ -51,3 +42,6 @@ export const useConnections = () => {
 
   return { rows, loading, stateWith, pendingIncoming, reload: load };
 };
+
+// Re-export types for convenience
+export type { ConnState, ConnRow };
