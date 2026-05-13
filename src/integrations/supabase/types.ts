@@ -1299,6 +1299,22 @@ export type Database = {
         Args: { conv_id: string; uid: string }
         Returns: boolean
       }
+      is_phone_registered: { Args: { _phone: string }; Returns: boolean }
+      lookup_student_by_enrollment: {
+        Args: { _q: string }
+        Returns: {
+          enrollment_id: string
+          full_name: string
+        }[]
+      }
+      lookup_student_by_phone: {
+        Args: { _phone: string }
+        Returns: {
+          enrollment_id: string
+          full_name: string
+          phone_number: string
+        }[]
+      }
       purchase_material: { Args: { _material_id: string }; Returns: string }
       refresh_top_selling_materials: { Args: never; Returns: undefined }
       search_my_library: {
