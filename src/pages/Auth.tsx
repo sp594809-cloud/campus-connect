@@ -87,20 +87,20 @@ const Auth = () => {
           <span className="font-bold text-lg">Campus Connect</span>
         </div>
         <h1 className="text-2xl font-bold mt-3">
-          {mode === "signup" ? "Join your campus network" : "Welcome back"}
+          {mode === "signup" ? "Hello Krish" : "Welcome back"}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {mode === "signup"
-            ? "Find peers, mentors and your next collab partner."
+            ? "Hello Krish"
             : "Pick up where you left off."}
         </p>
 
         <button
           onClick={google}
           disabled={busy}
-          className="mt-6 w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-foreground text-background font-semibold text-sm hover:opacity-90 transition-smooth disabled:opacity-50"
+          className="mt-6 w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-foreground text-background font-semibold text-sm hover:opacity-90 transition-smooth disabled:opacity-50[...]
         >
-          <svg className="h-4 w-4" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35 11.1h-9.17v2.92h5.28c-.23 1.4-1.66 4.12-5.28 4.12a5.84 5.84 0 010-11.68c1.84 0 3.07.78 3.78 1.45l2.57-2.48C16.95 3.93 14.9 3 12.18 3a8.97 8.97 0 100 17.94c5.18 0 8.6-3.64 8.6-8.76 0-.59-.07-1.04-.43-1.08z"/></svg>
+          <svg className="h-4 w-4" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35 11.1h-9.17v2.92h5.28c-.23 1.4-1.66 4.12-5.28 4.12a5.84 5.84 0 010-11.68c1.84 0 3.07.78 3.78 1.45l2.57-2.[...]
           Continue with Google
         </button>
 
@@ -137,7 +137,7 @@ const Auth = () => {
           <button
             type="submit"
             disabled={busy}
-            className="w-full py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow hover:opacity-95 transition-smooth disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow hover:opacity-95 transition-smooth disabled:opacity-50 flex items-center [...]
           >
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
             {mode === "signup" ? "Create account" : "Sign in"}
