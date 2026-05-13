@@ -51,11 +51,9 @@ const StudentRegistrationForm = () => {
     }
     setIsLoading(true);
     try {
-      const { data, error: sErr } = await supabase
-        .from("student1")
-        .select("full_name, enrollment_id, phone_number")
-        .eq("phone_number", phoneNumber)
-        .maybeSingle();
+      const { data: rows, error: sErr } = await supabase
+        .rpc("lookup_student_by_phone", { _phone: phoneNumber });
+      const data = Array.isArray(rows) ? rows[0] ?? null : null;
       if (sErr) { setError(sErr.message); toast.error(sErr.message); return; }
       if (!data) {
         const msg = "This number is not in our college records.";
@@ -63,10 +61,7 @@ const StudentRegistrationForm = () => {
       }
       setStudent(data as Student);
       const { data: existing } = await supabase
-        .from("registered_phones")
-        .select("phone_number")
-        .eq("phone_number", phoneNumber)
-        .maybeSingle();
+        .rpc("is_phone_registered", { _phone: phoneNumber });
       if (existing) toast.message("You're already registered — tap Continue to sign in.");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Lookup failed. Please try again.";

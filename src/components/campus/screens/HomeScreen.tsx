@@ -79,13 +79,10 @@ export const HomeScreen = () => {
     let alive = true;
     const t = setTimeout(async () => {
       const { data, error } = await supabase
-        .from("student1")
-        .select("full_name,enrollment_id")
-        .ilike("enrollment_id", `%${searchTerm.trim()}%`)
-        .limit(1)
-        .maybeSingle<{ full_name: string; enrollment_id: string }>();
+        .rpc("lookup_student_by_enrollment", { _q: searchTerm.trim() });
       if (error) console.error("[enrollment lookup]", error);
-      if (alive) setEnrollmentMatchName(data?.full_name ?? null);
+      const first = Array.isArray(data) ? data[0] : null;
+      if (alive) setEnrollmentMatchName(first?.full_name ?? null);
     }, 250);
     return () => { alive = false; clearTimeout(t); };
   }, [searchMode, searchTerm]);
