@@ -98,9 +98,11 @@ const Auth = () => {
         <button
           onClick={google}
           disabled={busy}
-          className="mt-6 w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-foreground text-background font-semibold text-sm hover:opacity-90 transition-smooth disabled:opacity-50[...]
+          className="mt-6 w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-foreground text-background font-semibold text-sm hover:opacity-90 transition-smooth disabled:opacity-50"
         >
-          <svg className="h-4 w-4" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35 11.1h-9.17v2.92h5.28c-.23 1.4-1.66 4.12-5.28 4.12a5.84 5.84 0 010-11.68c1.84 0 3.07.78 3.78 1.45l2.57-2.[...]
+          <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M21.35 11.1h-9.17v2.92h5.28c-.23 1.4-1.66 4.12-5.28 4.12a5.84 5.84 0 010-11.68c1.84 0 3.07.78 3.78 1.45l2.57-2.49C16.39 3.92 14.43 3 12.18 3a9 9 0 100 18c5.2 0 8.65-3.65 8.65-8.79 0-.59-.06-1.04-.16-1.51z" />
+          </svg>
           Continue with Google
         </button>
 
@@ -137,7 +139,7 @@ const Auth = () => {
           <button
             type="submit"
             disabled={busy}
-            className="w-full py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow hover:opacity-95 transition-smooth disabled:opacity-50 flex items-center [...]
+            className="w-full py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow hover:opacity-95 transition-smooth disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
             {mode === "signup" ? "Create account" : "Sign in"}
