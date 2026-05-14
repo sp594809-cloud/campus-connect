@@ -1,29 +1,45 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
 import Auth from "./pages/Auth.tsx";
-import CampusApp from "./pages/CampusApp.tsx";
-import StudentOnboarding from "./pages/StudentOnboarding.tsx";
-import StudentProfile from "./pages/StudentProfile.tsx";
-import UserProfile from "./pages/UserProfile.tsx";
-import InterviewExperiences from "./pages/InterviewExperiences.tsx";
-import InterviewPostFlow from "./pages/InterviewPostFlow.tsx";
-import InterviewExperienceDetail from "./pages/InterviewExperienceDetail.tsx";
-import InterviewCompare from "./pages/InterviewCompare.tsx";
-import MentorDirectory from "./pages/MentorDirectory.tsx";
-import Karma from "./pages/Karma.tsx";
-import Passport from "./pages/Passport.tsx";
-import RecruiterDashboard from "./pages/RecruiterDashboard.tsx";
-import RecruiterStudentDetail from "./pages/RecruiterStudentDetail.tsx";
+import NotFound from "./pages/NotFound.tsx";
 import { Navigate } from "react-router-dom";
+import { LazyLoadingFallback } from "./components/LazyLoadingFallback";
+import { LazyErrorBoundary } from "./components/LazyErrorBoundary";
+
+// Code-split heavy authenticated routes — keeps initial bundle small.
+const CampusApp = lazy(() => import("./pages/CampusApp.tsx"));
+const StudentOnboarding = lazy(() => import("./pages/StudentOnboarding.tsx"));
+const StudentProfile = lazy(() => import("./pages/StudentProfile.tsx"));
+const UserProfile = lazy(() => import("./pages/UserProfile.tsx"));
+const InterviewExperiences = lazy(() => import("./pages/InterviewExperiences.tsx"));
+const InterviewPostFlow = lazy(() => import("./pages/InterviewPostFlow.tsx"));
+const InterviewExperienceDetail = lazy(() => import("./pages/InterviewExperienceDetail.tsx"));
+const InterviewCompare = lazy(() => import("./pages/InterviewCompare.tsx"));
+const MentorDirectory = lazy(() => import("./pages/MentorDirectory.tsx"));
+const Karma = lazy(() => import("./pages/Karma.tsx"));
+const Passport = lazy(() => import("./pages/Passport.tsx"));
+const RecruiterDashboard = lazy(() => import("./pages/RecruiterDashboard.tsx"));
+const RecruiterStudentDetail = lazy(() => import("./pages/RecruiterStudentDetail.tsx"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+    },
+    mutations: { retry: 0 },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -33,7 +49,9 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <ErrorBoundary>
-            <Routes>
+            <LazyErrorBoundary>
+              <Suspense fallback={<LazyLoadingFallback />}>
+                <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/onboarding" element={<StudentOnboarding />} />
@@ -51,7 +69,9 @@ const App = () => (
             <Route path="/recruiter/student/:id" element={<RecruiterStudentDetail />} />
             <Route path="/app" element={<Navigate to="/campus" replace />} />
               <Route path="*" element={<NotFound />} />
-            </Routes>
+                </Routes>
+              </Suspense>
+            </LazyErrorBoundary>
           </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
