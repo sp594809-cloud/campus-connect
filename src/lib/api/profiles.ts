@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { PublicProfile, MiniProfile } from "@/core/types";
 
+export type { MiniProfile, PublicProfile } from "@/core/types";
+
 export const PROFILE_PUBLIC_COLS =
   "id,name,branch,year,bio,avatar_url,interests,skills,open_to_mentor,looking_for_mentor_in,placement_status,company,college_email_verified";
 

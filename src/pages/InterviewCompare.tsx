@@ -21,7 +21,7 @@ const InterviewCompare = () => {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("interview_experiences")
+      const { data } = await supabase.from("interview_experiences_public")
         .select("id,company_name,company_category,role,outcome,overall_difficulty,interview_year,application_source,ctc_lpa")
         .order("created_at", { ascending: false }).limit(80);
       setRows((data ?? []) as Row[]);

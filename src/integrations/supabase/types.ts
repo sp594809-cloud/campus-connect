@@ -660,6 +660,13 @@ export type Database = {
             referencedRelation: "interview_experiences"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "interview_rounds_experience_id_fkey"
+            columns: ["experience_id"]
+            isOneToOne: false
+            referencedRelation: "interview_experiences_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       karma_events: {
@@ -1510,6 +1517,108 @@ export type Database = {
           username: string | null
           verified: boolean | null
           year: Database["public"]["Enums"]["year_type"] | null
+        }
+        Relationships: []
+      }
+      interview_experiences_public: {
+        Row: {
+          anonymous: boolean | null
+          application_source:
+            | Database["public"]["Enums"]["application_source"]
+            | null
+          author_id: string | null
+          college_year_at_time: string | null
+          company_category:
+            | Database["public"]["Enums"]["company_category"]
+            | null
+          company_name: string | null
+          created_at: string | null
+          ctc_lpa: number | null
+          id: string | null
+          interview_month: number | null
+          interview_year: number | null
+          interviewer_behavior:
+            | Database["public"]["Enums"]["interviewer_behavior"]
+            | null
+          mistakes: string | null
+          outcome: Database["public"]["Enums"]["interview_outcome"] | null
+          overall_difficulty:
+            | Database["public"]["Enums"]["difficulty_level"]
+            | null
+          prep_duration_months: number | null
+          rejection_round: string | null
+          role: string | null
+          role_type: Database["public"]["Enums"]["role_type"] | null
+          strategy: string | null
+          updated_at: string | null
+          upvotes_count: number | null
+          verified: boolean | null
+        }
+        Insert: {
+          anonymous?: boolean | null
+          application_source?:
+            | Database["public"]["Enums"]["application_source"]
+            | null
+          author_id?: never
+          college_year_at_time?: string | null
+          company_category?:
+            | Database["public"]["Enums"]["company_category"]
+            | null
+          company_name?: string | null
+          created_at?: string | null
+          ctc_lpa?: number | null
+          id?: string | null
+          interview_month?: number | null
+          interview_year?: number | null
+          interviewer_behavior?:
+            | Database["public"]["Enums"]["interviewer_behavior"]
+            | null
+          mistakes?: string | null
+          outcome?: Database["public"]["Enums"]["interview_outcome"] | null
+          overall_difficulty?:
+            | Database["public"]["Enums"]["difficulty_level"]
+            | null
+          prep_duration_months?: number | null
+          rejection_round?: string | null
+          role?: string | null
+          role_type?: Database["public"]["Enums"]["role_type"] | null
+          strategy?: string | null
+          updated_at?: string | null
+          upvotes_count?: number | null
+          verified?: boolean | null
+        }
+        Update: {
+          anonymous?: boolean | null
+          application_source?:
+            | Database["public"]["Enums"]["application_source"]
+            | null
+          author_id?: never
+          college_year_at_time?: string | null
+          company_category?:
+            | Database["public"]["Enums"]["company_category"]
+            | null
+          company_name?: string | null
+          created_at?: string | null
+          ctc_lpa?: number | null
+          id?: string | null
+          interview_month?: number | null
+          interview_year?: number | null
+          interviewer_behavior?:
+            | Database["public"]["Enums"]["interviewer_behavior"]
+            | null
+          mistakes?: string | null
+          outcome?: Database["public"]["Enums"]["interview_outcome"] | null
+          overall_difficulty?:
+            | Database["public"]["Enums"]["difficulty_level"]
+            | null
+          prep_duration_months?: number | null
+          rejection_round?: string | null
+          role?: string | null
+          role_type?: Database["public"]["Enums"]["role_type"] | null
+          strategy?: string | null
+          updated_at?: string | null
+          upvotes_count?: number | null
+          verified?: boolean | null
         }
         Relationships: []
       }

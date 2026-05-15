@@ -46,15 +46,24 @@ const InterviewExperiences = () => {
   const load = async () => {
     setBusy(true);
     const { data, error } = await supabase
-      .from("interview_experiences")
+      .from("interview_experiences_public")
       .select(
-        "id,company_name,company_category,role,outcome,overall_difficulty,interview_year,application_source,anonymous,verified,author_id,created_at,rounds:interview_rounds(count),author:profiles(id,name,avatar_url,branch)"
+        "id,company_name,company_category,role,outcome,overall_difficulty,interview_year,application_source,anonymous,verified,author_id,created_at,rounds:interview_rounds(count)"
       )
       .order("created_at", { ascending: false })
       .limit(EXPERIENCES_PAGE_SIZE);
     if (error) console.error("experiences load error", error);
-    const base = (data ?? []) as unknown as RawRow[];
-    setRows(base.map((b) => ({ ...b, author: b.anonymous ? null : b.author })));
+    const base = (data ?? []) as unknown as Omit<RawRow, "author">[];
+    const ids = Array.from(new Set(base.filter((b) => !b.anonymous && b.author_id).map((b) => b.author_id)));
+    let authorMap: Record<string, NonNullable<RawRow["author"]>> = {};
+    if (ids.length) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id,name,avatar_url,branch")
+        .in("id", ids);
+      authorMap = Object.fromEntries(((profs ?? []) as NonNullable<RawRow["author"]>[]).map((p) => [p.id, p]));
+    }
+    setRows(base.map((b) => ({ ...b, author: b.anonymous ? null : (authorMap[b.author_id] ?? null) })));
     setBusy(false);
   };
   useEffect(() => { load(); }, []);

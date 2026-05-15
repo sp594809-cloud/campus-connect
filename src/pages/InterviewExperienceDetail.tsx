@@ -29,7 +29,7 @@ const InterviewExperienceDetail = () => {
     if (!id) return;
     (async () => {
       const { data: e, error } = await supabase
-        .from("interview_experiences")
+        .from("interview_experiences_public")
         .select("*")
         .eq("id", id)
         .maybeSingle();
