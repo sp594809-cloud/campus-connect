@@ -11,6 +11,7 @@ const StudentProfile = () => {
   const navigate = useNavigate();
   const { user, profile, loading, refreshProfile, signOut } = useAuth();
   const [uploading, setUploading] = useState(false);
+  const [copied, setCopied] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
