@@ -13,6 +13,8 @@ import { KarmaHeatmap } from "@/components/passport/KarmaHeatmap";
 import { StreakCalendar } from "@/components/passport/StreakCalendar";
 import { PlacementTimeline } from "@/components/passport/PlacementTimeline";
 import { RecruiterInsightCard } from "@/components/passport/RecruiterInsightCard";
+import { LevelBar } from "@/components/passport/LevelBar";
+import { AchievementTicker } from "@/components/passport/AchievementTicker";
 import { computeScore, fetchPassportData } from "@/lib/employability";
 
 const Passport = () => {
@@ -81,6 +83,18 @@ const Passport = () => {
     return Array.from(new Set([...skills, ...fromPosts])).slice(0, 16);
   }, [profile, data]);
 
+  const milestones = useMemo(() => {
+    if (!profile || !data) return [] as string[];
+    const s = (data.streak as { current_streak?: number; longest_streak?: number; total_completed?: number } | null) ?? {};
+    const out: string[] = [];
+    if (s.current_streak) out.push(`🔥 Current DSA Streak: ${s.current_streak} day${s.current_streak > 1 ? "s" : ""}`);
+    if (s.total_completed) out.push(`💎 Total DSA Solved: ${s.total_completed}`);
+    if (data.interviews.length) out.push(`📝 Interview Stories Shared: ${data.interviews.length}`);
+    if ((profile.karma_total ?? 0) > 0) out.push(`✨ Karma Earned: ${profile.karma_total}`);
+    if (s.longest_streak) out.push(`🏆 Longest Streak: ${s.longest_streak} days`);
+    return out.slice(0, 4);
+  }, [profile, data]);
+
   const timelineItems = useMemo(() => {
     if (!data) return [];
     const fromInterviews = data.interviews.map((i: { id: string; created_at: string; company_name: string; role: string; outcome: string }) => ({
@@ -123,6 +137,9 @@ const Passport = () => {
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
         <PassportHeader p={profile} isOwner={isOwner} isAdmin={isAdmin} onMessage={startChat} onVerify={verify} onConnect={() => navigate(`/u/${profile.id}`)} />
+        <div className="mt-4">
+          <LevelBar karma={profile.karma_total ?? 0} />
+        </div>
         <div className="grid gap-4 mt-4 md:grid-cols-3">
           <div className="md:col-span-1 space-y-4">
             {score && <EmployabilityScoreCard score={score} />}
@@ -136,6 +153,7 @@ const Passport = () => {
             </Card>
           </div>
           <div className="md:col-span-2 space-y-4">
+            {milestones.length > 0 && <AchievementTicker items={milestones} />}
             <KarmaHeatmap events={data?.karma ?? []} />
             <StreakCalendar completions={data?.completions ?? []} streak={(data?.streak ?? null) as Parameters<typeof StreakCalendar>[0]["streak"]} />
             <PlacementTimeline items={timelineItems} />
