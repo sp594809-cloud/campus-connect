@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Award, Camera, GraduationCap, Hash, Loader2, LogOut, ShieldCheck, Sparkles, Target, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Award, Camera, Copy, Check, Globe, GraduationCap, Hash, Loader2, LogOut, ShieldCheck, Sparkles, Target, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { InterestChip } from "@/components/campus/InterestChip";
 import { useAuth } from "@/contexts/AuthContext";
