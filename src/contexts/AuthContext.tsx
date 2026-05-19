@@ -8,6 +8,7 @@ import { emitReward } from "@/lib/rewards";
 export interface Profile {
   id: string;
   name: string;
+  username: string | null;
   branch: string | null;
   year: string | null;
   bio: string;
