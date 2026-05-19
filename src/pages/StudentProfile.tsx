@@ -169,6 +169,32 @@ const StudentProfile = () => {
             <span className="text-lg font-black text-accent">{profile.karma_total ?? 0}</span>
           </button>
 
+          <div className="mt-4 rounded-2xl border border-primary/30 bg-gradient-card p-4">
+            <div className="flex items-center gap-3">
+              <Globe className="h-5 w-5 text-primary" />
+              <div className="flex-1">
+                <p className="font-bold text-sm">Public Passport</p>
+                <p className="text-[11px] text-muted-foreground">Preview & share your career portfolio</p>
+              </div>
+              <button
+                onClick={() => navigate(`/passport/${passportSlug}`)}
+                className="px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-smooth"
+              >
+                View
+              </button>
+            </div>
+            <div className="mt-3 flex items-center gap-2 rounded-xl bg-secondary px-3 py-2">
+              <span className="text-[11px] text-muted-foreground truncate flex-1">{passportUrl}</span>
+              <button
+                onClick={copyPassportUrl}
+                aria-label="Copy passport URL"
+                className="shrink-0 h-7 w-7 rounded-lg bg-background border border-border flex items-center justify-center hover:bg-muted transition-smooth"
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+              </button>
+            </div>
+          </div>
+
           <div className="mt-5 rounded-2xl border border-border bg-card p-4">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Sparkles className="h-4 w-4 text-accent" /> Open to mentor: {profile.open_to_mentor ? "Yes" : "No"}
