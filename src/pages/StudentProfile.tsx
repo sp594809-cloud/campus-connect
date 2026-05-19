@@ -85,6 +85,20 @@ const StudentProfile = () => {
     finally { setUploading(false); }
   };
 
+  const passportSlug = profile.username || user.id;
+  const passportUrl = `${window.location.origin}/passport/${passportSlug}`;
+
+  const copyPassportUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(passportUrl);
+      setCopied(true);
+      toast.success("Passport URL copied to clipboard!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Could not copy URL");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary via-background to-accent-soft">
       <div className="mx-auto max-w-md min-h-screen bg-background relative shadow-elevated">
