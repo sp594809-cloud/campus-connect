@@ -144,7 +144,7 @@ const Passport = () => {
           <div className="md:col-span-1 space-y-4">
             {score && <EmployabilityScoreCard score={score} />}
             <RecruiterInsightCard insights={insights} />
-            <Card>
+            <Card className="transition-all duration-300 hover:-translate-y-0.5 hover:shadow-elevated">
               <CardHeader className="pb-3"><CardTitle className="text-base">Recruiter Tags</CardTitle></CardHeader>
               <CardContent>
                 {tags.length === 0 ? <p className="text-xs text-muted-foreground">No tags yet.</p> :
