@@ -187,7 +187,7 @@ export function CompanyDetailScreen() {
         ) : news.length > 0 ? (
           <div className="grid gap-3">
             {news.map((item) => (
-              <CompanyNewsCard key={item.id} news={item} showCompany={false} />
+              <CompanyNewsCard key={item.id} news={item} />
             ))}
           </div>
         ) : (

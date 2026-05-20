@@ -7,6 +7,15 @@ import type {
   ReviewsSearchResult,
 } from './types';
 
+export type {
+  Company,
+  CompanyNews,
+  CompanyReview,
+  CompanySearchResult,
+  NewsSearchResult,
+  ReviewsSearchResult,
+};
+
 // Environment variables for API keys
 const NEWS_API_KEY = import.meta.env.VITE_NEWS_API_KEY;
 const NEWS_API_BASE_URL = import.meta.env.VITE_NEWS_API_BASE_URL || 'https://newsapi.org/v2';
@@ -31,7 +40,7 @@ const MOCK_NEWS: CompanyNews[] = [
     companyName: 'Google',
     title: 'Google Announces New AI Features for Search',
     description: 'Google is rolling out new AI-powered features to improve search results and user experience.',
-    url: '/companies/' + id,
+    url: '/companies/Google',
     imageUrl: 'https://picsum.photos/seed/news1/400/200',
     publishedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     source: 'TechNews',
@@ -42,7 +51,7 @@ const MOCK_NEWS: CompanyNews[] = [
     companyName: 'Microsoft',
     title: 'Microsoft Cloud Revenue Hits Record High',
     description: 'Microsoft Azure continues to grow with strong enterprise adoption.',
-    url: '/companies/' + companyName,
+    url: '/companies/Microsoft',
     imageUrl: 'https://picsum.photos/seed/news2/400/200',
     publishedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
     source: 'CloudWeekly',
@@ -53,7 +62,7 @@ const MOCK_NEWS: CompanyNews[] = [
     companyName: 'Amazon',
     title: 'Amazon Expands Same-Day Delivery to More Cities',
     description: 'Amazon announces expansion of same-day delivery service to 15 new metropolitan areas.',
-    url: '/companies/' + companyName,
+    url: '/companies/Amazon',
     imageUrl: 'https://picsum.photos/seed/news3/400/200',
     publishedAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
     source: 'RetailToday',
@@ -64,7 +73,7 @@ const MOCK_NEWS: CompanyNews[] = [
     companyName: 'Apple',
     title: 'Apple Unveils New MacBook Line with M4 Chip',
     description: 'Apple announces next generation MacBooks featuring the new M4 processor.',
-    url: '/companies/' + companyName,
+    url: '/companies/Apple',
     imageUrl: 'https://picsum.photos/seed/news4/400/200',
     publishedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
     source: 'AppleInsider',
@@ -75,7 +84,7 @@ const MOCK_NEWS: CompanyNews[] = [
     companyName: 'Meta',
     title: 'Meta Launches New VR Headset for Enterprise',
     description: 'Meta introduces Quest Pro for business applications and collaboration.',
-    url: '/companies/' + companyName,
+    url: '/companies/Meta',
     imageUrl: 'https://picsum.photos/seed/news5/400/200',
     publishedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     source: 'VRFocus',
@@ -86,7 +95,7 @@ const MOCK_NEWS: CompanyNews[] = [
     companyName: 'Google',
     title: 'Google Waymo Expands Autonomous Ride Service',
     description: 'Waymo service now available in three new major cities.',
-    url: '/companies/' + companyName,
+    url: '/companies/Google',
     imageUrl: 'https://picsum.photos/seed/news6/400/200',
     publishedAt: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(),
     source: 'AutoTech',
@@ -97,7 +106,7 @@ const MOCK_NEWS: CompanyNews[] = [
     companyName: 'Tesla',
     title: 'Tesla Cybertruck Deliveries Begin',
     description: 'Tesla starts delivering the long-awaited Cybertruck to customers.',
-    url: '/companies/' + companyName,
+    url: '/companies/Tesla',
     imageUrl: 'https://picsum.photos/seed/news7/400/200',
     publishedAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
     source: 'EVNews',
@@ -108,7 +117,7 @@ const MOCK_NEWS: CompanyNews[] = [
     companyName: 'Goldman Sachs',
     title: 'Goldman Sachs Reports Strong Q4 Earnings',
     description: 'Goldman Sachs beats expectations with record quarterly profits.',
-    url: '/companies/' + companyName,
+    url: '/companies/Goldman Sachs',
     imageUrl: 'https://picsum.photos/seed/news8/400/200',
     publishedAt: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
     source: 'FinanceWire',
