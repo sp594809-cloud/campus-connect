@@ -1,231 +1,225 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Building2, RefreshCw, Clock, AlertCircle, TrendingUp, ArrowRight } from 'lucide-react';
-import { CompanySearch, CompanyNewsCard } from '@/components/companies';
-import { useCompanyNewsPolling } from '@/hooks/useCompanyNewsPolling';
-import { getAllCompanies, type Company } from '@/integrations/external/companyApi';
+import { useEffect, useMemo, useState } from "react";
+import { Newspaper, Sparkles, RefreshCw, ExternalLink, Filter, Loader2, AlertCircle, Clock } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { formatDistanceToNow } from "date-fns";
+import { cn } from "@/lib/utils";
 
-// Live status updates for ticker
-const LIVE_UPDATES = [
-  { text: 'Microsoft window closes in 4 hours', status: 'urgent' },
-  { text: 'Amazon shortlisted 12 seniors today', status: 'success' },
-  { text: 'Google added 3 new internship roles', status: 'success' },
-  { text: 'Meta opens summer applications', status: 'success' },
-  { text: 'Goldman Sachs deadline tomorrow', status: 'urgent' },
-  { text: 'Apple hiring for 5 new positions', status: 'success' },
-  { text: 'Netflix interview schedule released', status: 'success' },
-  { text: 'Tesla recruitment drive next week', status: 'neutral' },
-];
+type Article = {
+  id: string;
+  title: string;
+  url: string;
+  source: string;
+  publishedAt: string;
+  snippet: string;
+  category: "branch" | "ai";
+};
+
+type BranchNewsResponse = {
+  branch: string;
+  branchArticles: Article[];
+  aiArticles: Article[];
+  fetchedAt: string;
+};
+
+const BRANCH_LABEL: Record<string, string> = {
+  CSE: "Computer Science",
+  IT: "Information Technology",
+  ECE: "Electronics & Communication",
+  ME: "Mechanical",
+  EE: "Electrical",
+  CE: "Civil",
+  Other: "Engineering",
+};
+
+type FilterKey = "all" | "branch" | "ai";
 
 export function CompaniesScreen() {
-  const navigate = useNavigate();
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-  const [trendingCompanies, setTrendingCompanies] = useState<Company[]>([]);
-  const [liveUpdateIndex, setLiveUpdateIndex] = useState(0);
+  const { profile } = useAuth();
+  const branch = profile?.branch || "Other";
+  const branchLabel = BRANCH_LABEL[branch] ?? "Your Field";
+  const [filter, setFilter] = useState<FilterKey>("all");
 
-  // Load trending companies
-  useEffect(() => {
-    getAllCompanies().then(setTrendingCompanies).catch(console.error);
-  }, []);
-
-  // Cycle through live updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLiveUpdateIndex((prev) => (prev + 1) % LIVE_UPDATES.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Polling for news
-  const {
-    news,
-    isLoading: newsLoading,
-    isError: newsError,
-    isFetching,
-    lastUpdated,
-    refetch,
-  } = useCompanyNewsPolling({
-    companyId: selectedCompany?.id,
-    refreshIntervalMs: 3 * 60 * 1000,
+  const { data, isLoading, isFetching, isError, refetch, dataUpdatedAt } = useQuery({
+    queryKey: ["branch-news", branch],
+    queryFn: async (): Promise<BranchNewsResponse> => {
+      const { data, error } = await supabase.functions.invoke("branch-news", {
+        body: { branch },
+      });
+      if (error) throw error;
+      return data as BranchNewsResponse;
+    },
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
+    retry: 1,
   });
 
-  const handleCompanySelect = (company: Company) => {
-    setSelectedCompany(company);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'urgent':
-        return 'text-red-500';
-      case 'success':
-        return 'text-green-500';
-      default:
-        return 'text-green-500';
+  const articles = useMemo(() => {
+    const branchA = data?.branchArticles ?? [];
+    const aiA = data?.aiArticles ?? [];
+    if (filter === "branch") return branchA;
+    if (filter === "ai") return aiA;
+    // Interleave: branch-heavy with AI sprinkled
+    const merged: Article[] = [];
+    const max = Math.max(branchA.length, aiA.length);
+    for (let i = 0; i < max; i++) {
+      if (branchA[i]) merged.push(branchA[i]);
+      if (i % 3 === 1 && aiA[Math.floor(i / 3)]) merged.push(aiA[Math.floor(i / 3)]);
     }
-  };
+    return merged;
+  }, [data, filter]);
 
-  const currentUpdate = LIVE_UPDATES[liveUpdateIndex];
+  const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
 
   return (
-    <div className="space-y-4 pb-20">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-primary" />
-          Companies
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Real-time recruitment intelligence terminal
-        </p>
-      </div>
-
-      {/* Search */}
-      <CompanySearch
-        onSelect={handleCompanySelect}
-        placeholder="Search companies..."
-      />
-
-      {/* Live Status Ticker Tape */}
-      <div className="sticky top-0 z-10 backdrop-blur-xl bg-black/30 border border-white/10 rounded-lg overflow-hidden">
-        <div className="flex items-center gap-3 px-3 py-2 overflow-x-auto">
-          {/* Pulsing dots */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+    <div className="pb-24">
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-b-3xl px-4 pt-4 pb-6 text-primary-foreground" style={{ background: "var(--gradient-hero)" }}>
+        <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+        <div className="relative">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wider opacity-80">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
             </span>
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-50 delay-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-            </span>
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-25 delay-150" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-            </span>
+            Live market pulse
           </div>
-          
-          {/* Active update text */}
-          <span className={`text-xs font-medium whitespace-nowrap animate-pulse ${getStatusColor(currentUpdate?.status || 'neutral')}`}>
-            {currentUpdate?.text || 'Loading...'}
-          </span>
+          <h1 className="mt-2 text-2xl font-bold leading-tight">
+            {branchLabel} <span className="opacity-80">News</span>
+          </h1>
+          <p className="mt-1 text-sm opacity-80">
+            Trending updates tailored to your branch · AI insights for everyone
+          </p>
         </div>
       </div>
 
-      {/* Selected Company Show Details */}
-      {selectedCompany && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#1a1a2e] to-purple-600 flex items-center justify-center">
-                <Building2 className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-lg">{selectedCompany.name}</h2>
-                {selectedCompany.industry && (
-                  <p className="text-xs text-muted-foreground">{selectedCompany.industry}</p>
-                )}
-              </div>
-            </div>
+      {/* Controls */}
+      <div className="px-4 mt-4 flex items-center gap-2">
+        <div className="flex items-center gap-1 rounded-full bg-secondary p-1 text-xs font-semibold">
+          {([
+            { k: "all", label: "All" },
+            { k: "branch", label: branch },
+            { k: "ai", label: "AI" },
+          ] as const).map((t) => (
             <button
-              onClick={() => setSelectedCompany(null)}
-              className="text-xs text-purple-400 hover:text-purple-300"
-            >
-              Clear ✕
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* News Section with Split Layout */}
-      {!newsError && (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          {/* Main News Feed (70%) */}
-          <div className="lg:col-span-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
-                {selectedCompany ? `${selectedCompany.name} Feed` : 'Live Feed'}
-              </h3>
-              {lastUpdated && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  <span>{lastUpdated.toLocaleTimeString()}</span>
-                </div>
+              key={t.k}
+              onClick={() => setFilter(t.k as FilterKey)}
+              className={cn(
+                "px-3 py-1.5 rounded-full transition-smooth",
+                filter === t.k
+                  ? "bg-primary text-primary-foreground shadow-soft"
+                  : "text-secondary-foreground hover:bg-background/60",
               )}
-            </div>
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex-1" />
+        {lastUpdated && (
+          <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            {formatDistanceToNow(lastUpdated, { addSuffix: true })}
+          </span>
+        )}
+        <button
+          onClick={() => refetch()}
+          aria-label="Refresh"
+          className="h-9 w-9 inline-flex items-center justify-center rounded-full bg-card border border-border hover:bg-secondary transition-smooth"
+        >
+          <RefreshCw className={cn("h-4 w-4 text-foreground", isFetching && "animate-spin")} />
+        </button>
+      </div>
 
-            {newsLoading && !news.length ? (
-              <div className="text-center py-8">
-                <RefreshCw className="h-8 w-8 mx-auto animate-spin text-purple-500" />
-              </div>
-            ) : news.length > 0 ? (
-              <div className="grid gap-3">
-                {news.map((item) => (
-                  <CompanyNewsCard key={item.id} news={item} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 bg-white/5 rounded-lg">
-                <p className="text-sm text-muted-foreground">No updates available</p>
-              </div>
-            )}
-
-            {isFetching && (
-              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                <RefreshCw className="h-3 w-3 animate-spin" />
-                <span>Syncing...</span>
-              </div>
-            )}
+      {/* Body */}
+      <div className="px-4 mt-4 space-y-3">
+        {isLoading && (
+          <div className="space-y-3">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-28 rounded-2xl bg-secondary/60 animate-pulse" />
+            ))}
           </div>
+        )}
 
-          {/* Trending Sidebar (30%) */}
-          <div className="lg:col-span-1 space-y-3">
-            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Trending
-            </h3>
-            <div className="space-y-2">
-              {trendingCompanies.slice(0, 8).map((company, idx) => (
-                <button
-                  key={company.id}
-                  onClick={() => handleCompanySelect(company)}
-                  className="w-full flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all text-left group"
-                >
-                  <span className="text-xs text-muted-foreground w-4">{idx + 1}</span>
-                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#1a1a2e] to-purple-600 flex items-center justify-center flex-shrink-0">
-                    <Building2 className="h-4 w-4 text-white" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate group-hover:text-purple-400 transition-colors">
-                      {company.name}
-                    </p>
-                    {company.industry && (
-                      <p className="text-xs text-muted-foreground truncate">
-                        {company.industry}
-                      </p>
-                    )}
-                  </div>
-                  <ArrowRight className="h-3 w-3 text-muted-foreground group-hover:text-purple-400 transition-colors opacity-0 group-hover:opacity-100" />
-                </button>
-              ))}
+        {isError && !isLoading && (
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold text-sm">Couldn't load latest news</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Check your connection and try again.</p>
+              <button
+                onClick={() => refetch()}
+                className="mt-2 text-xs font-semibold text-accent hover:underline"
+              >
+                Retry
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Error State */}
-      {newsError && (
-        <div className="text-center py-12 bg-white/5 rounded-lg">
-          <AlertCircle className="h-10 w-10 mx-auto mb-3 text-red-500" />
-          <p className="text-sm mb-3">Feed unavailable</p>
-          <button
-            onClick={() => refetch()}
-            className="text-xs text-purple-400 hover:text-purple-300"
-          >
-            Retry ↻
-          </button>
-        </div>
-      )}
+        {!isLoading && !isError && articles.length === 0 && (
+          <div className="rounded-2xl border border-border bg-card p-6 text-center">
+            <Newspaper className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">No fresh stories right now. Pull to refresh in a bit.</p>
+          </div>
+        )}
+
+        {!isLoading && articles.map((a) => <NewsCard key={a.id} article={a} />)}
+      </div>
     </div>
+  );
+}
+
+function NewsCard({ article }: { article: Article }) {
+  const isAI = article.category === "ai";
+  let timeAgo = "";
+  try {
+    timeAgo = formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true });
+  } catch {
+    timeAgo = "";
+  }
+
+  return (
+    <a
+      href={article.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group block rounded-2xl bg-card border border-border p-4 shadow-soft hover:shadow-elevated hover:-translate-y-0.5 transition-smooth"
+    >
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+            isAI
+              ? "bg-accent-soft text-accent"
+              : "bg-secondary text-secondary-foreground",
+          )}
+        >
+          {isAI ? <Sparkles className="h-3 w-3" /> : <Filter className="h-3 w-3" />}
+          {isAI ? "AI · For everyone" : "For your branch"}
+        </span>
+        <span className="text-[11px] text-muted-foreground">{timeAgo}</span>
+      </div>
+
+      <h3 className="font-semibold text-[15px] leading-snug text-foreground group-hover:text-accent transition-smooth line-clamp-2">
+        {article.title}
+      </h3>
+
+      {article.snippet && (
+        <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">{article.snippet}</p>
+      )}
+
+      <div className="mt-3 flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground truncate max-w-[60%]">
+          {article.source}
+        </span>
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-accent">
+          Read on source
+          <ExternalLink className="h-3 w-3" />
+        </span>
+      </div>
+    </a>
   );
 }
 
