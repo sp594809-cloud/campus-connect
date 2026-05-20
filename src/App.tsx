@@ -25,6 +25,7 @@ const Karma = lazy(() => import("./pages/Karma.tsx"));
 const Passport = lazy(() => import("./pages/Passport.tsx"));
 const RecruiterDashboard = lazy(() => import("./pages/RecruiterDashboard.tsx"));
 const RecruiterStudentDetail = lazy(() => import("./pages/RecruiterStudentDetail.tsx"));
+const CompanyDetailScreen = lazy(() => import("./components/campus/screens/CompanyDetailScreen.tsx"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
@@ -67,6 +68,7 @@ const App = () => (
             <Route path="/passport/:slug" element={<Passport />} />
             <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
             <Route path="/recruiter/student/:id" element={<RecruiterStudentDetail />} />
+            <Route path="/companies/:name" element={<CompanyDetailScreen />} />
             <Route path="/app" element={<Navigate to="/campus" replace />} />
               <Route path="*" element={<NotFound />} />
                 </Routes>

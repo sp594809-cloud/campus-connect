@@ -1,7 +1,7 @@
-import { Calendar, Compass, Home, MessageCircle, ShoppingBag, Users } from "lucide-react";
+import { Calendar, Compass, Home, MessageCircle, ShoppingBag, Users, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type Tab = "home" | "discover" | "communities" | "events" | "marketplace" | "messages";
+export type Tab = "home" | "discover" | "communities" | "events" | "marketplace" | "messages" | "companies";
 
 const items: { id: Tab; label: string; Icon: typeof Home }[] = [
   { id: "home", label: "Home", Icon: Home },
@@ -9,6 +9,7 @@ const items: { id: Tab; label: string; Icon: typeof Home }[] = [
   { id: "marketplace", label: "Market", Icon: ShoppingBag },
   { id: "communities", label: "Groups", Icon: Users },
   { id: "events", label: "Events", Icon: Calendar },
+  { id: "companies", label: "Companies", Icon: Building2 },
   { id: "messages", label: "Chats", Icon: MessageCircle },
 ];
 
