@@ -124,7 +124,7 @@ const Karma = () => {
                     <p className="text-3xl mb-2">✨</p>
                     <p className="text-sm font-semibold">Earn your first karma</p>
                     <p className="text-xs text-muted-foreground mt-1">Share an interview experience for +50.</p>
-                    <button onClick={() => nav("/interview/new")} className="mt-3 px-4 py-2 rounded-full bg-foreground text-background text-xs font-semibold">Post now</button>
+                    <button onClick={() => nav("/interview/new")} className="mt-3 px-4 py-2 rounded-full bg-pink-500 hover:bg-pink-600 text-white text-xs font-semibold">Post now</button>
                   </div>
                 )}
                 <div className="space-y-2">

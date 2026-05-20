@@ -90,7 +90,7 @@ const InterviewExperiences = () => {
             <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-accent/30 blur-2xl" />
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider opacity-90"><Sparkles className="h-3.5 w-3.5" /> Placement Engine</div>
             <p className="mt-2 text-lg font-bold leading-snug">Real stories. Round-by-round. From your seniors.</p>
-            <button onClick={() => navigate("/interview/new")} className="mt-3 inline-flex items-center gap-1.5 bg-primary-foreground/20 hover:bg-primary-foreground/30 backdrop-blur px-3 py-1.5 rounded-full text-sm font-semibold">
+            <button onClick={() => navigate("/interview/new")} className="mt-3 inline-flex items-center gap-1.5 bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 rounded-full text-sm font-semibold">
               <Plus className="h-4 w-4" /> Share your experience (+50 karma)
             </button>
           </div>
