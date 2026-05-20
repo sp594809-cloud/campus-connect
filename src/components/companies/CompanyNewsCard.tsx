@@ -1,4 +1,5 @@
-import { Building2, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Building2, ArrowRight } from 'lucide-react';
 import type { CompanyNews } from '@/integrations/external/types';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -34,6 +35,7 @@ const getCompanySymbol = (name: string) => {
 };
 
 export function CompanyNewsCard({ news, className = '' }: CompanyNewsCardProps) {
+  const navigate = useNavigate();
   const timeAgo = formatDistanceToNow(new Date(news.publishedAt), { addSuffix: true });
   const statusColor = 'text-green-500'; // Default to green for live
   
@@ -89,15 +91,13 @@ export function CompanyNewsCard({ news, className = '' }: CompanyNewsCardProps) 
           </div>
 
           {/* View Details Button */}
-          <a
-            href={news.url}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => navigate(`/companies/${encodeURIComponent(news.companyName || '')}`, { replace: true })}
             className="inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-semibold bg-gradient-to-r from-[#1a1a2e] to-purple-600 text-white hover:from-purple-600 hover:to-[#1a1a2e] transition-all duration-200"
           >
             View Details
-            <ExternalLink className="h-3 w-3" />
-          </a>
+            <ArrowRight className="h-3 w-3" />
+          </button>
         </div>
       </div>
     </article>
