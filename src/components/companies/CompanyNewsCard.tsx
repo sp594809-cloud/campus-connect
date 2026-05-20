@@ -46,8 +46,8 @@ export function CompanyNewsCard({ news, className = '' }: CompanyNewsCardProps) 
 
   return (
     <article className={`group relative ${className}`}>
-      {/* Glassmorphic card */}
-      <div className="relative backdrop-blur-xl bg-white/10 border border-white/20 rounded-lg p-3 hover:bg-white/15 transition-all duration-200">
+      {/* Glassmorphic card - using design tokens */}
+      <div className="relative backdrop-blur-xl bg-glass-card border border-white/20 rounded-lg p-3 hover:bg-white/15 transition-all duration-200 shadow-soft hover:shadow-glow">
         {/* Top row: Logo + Status */}
         <div className="flex items-start justify-between gap-3 mb-2">
           {/* Company Logo with gradient frame */}
