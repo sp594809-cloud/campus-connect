@@ -7,6 +7,15 @@ import type {
   ReviewsSearchResult,
 } from './types';
 
+export type {
+  Company,
+  CompanyNews,
+  CompanyReview,
+  CompanySearchResult,
+  NewsSearchResult,
+  ReviewsSearchResult,
+};
+
 // Environment variables for API keys
 const NEWS_API_KEY = import.meta.env.VITE_NEWS_API_KEY;
 const NEWS_API_BASE_URL = import.meta.env.VITE_NEWS_API_BASE_URL || 'https://newsapi.org/v2';
