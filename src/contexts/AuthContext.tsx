@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode, useMemo } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,47 +66,99 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Refs to avoid stale closures and track user ID for realtime callbacks
+  const userIdRef = useRef<string | null>(null);
+  const loadingRef = useRef(false);
+  // Track if initial load is complete to prevent race conditions
+  const initialLoadComplete = useRef(false);
 
-  const loadProfile = async (uid: string) => {
+  const loadProfile = useCallback(async (uid: string, isInitial = false) => {
+    // Prevent concurrent profile loads
+    if (loadingRef.current && isInitial) {
+      return;
+    }
+    
+    if (isInitial) {
+      loadingRef.current = true;
+      setLoading(true);
+    }
+
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", uid)
       .maybeSingle();
+    
+    // Always mark loading as false after attempt (with isInitial flag for intentional calls)
+    if (isInitial) {
+      loadingRef.current = false;
+    }
+    
     if (error) {
       console.error("[loadProfile]", error);
+      setLoading(false);
       return;
     }
+    
     setProfile((data as Profile) ?? null);
-  };
+    
+    // Only set loading false for initial load
+    if (isInitial && !initialLoadComplete.current) {
+      initialLoadComplete.current = true;
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, sess) => {
       setSession(sess);
-      setUser(sess?.user ?? null);
-      if (sess?.user) {
-        loadProfile(sess.user.id);
+      const currentUser = sess?.user ?? null;
+      setUser(currentUser);
+      
+      // Update the ref with current user ID
+      userIdRef.current = currentUser?.id ?? null;
+      
+      if (currentUser) {
+        // For auth state changes (login/logout), load profile without the initial flag
+        // since we already have the session
+        loadProfile(currentUser.id, false);
       } else {
         setProfile(null);
       }
     });
 
     supabase.auth.getSession().then(({ data: { session: s } }) => {
+      const currentUser = s?.user ?? null;
       setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) loadProfile(s.user.id).finally(() => setLoading(false));
-      else setLoading(false);
+      setUser(currentUser);
+      userIdRef.current = currentUser?.id ?? null;
+      
+      if (currentUser) {
+        // Initial session load - set loading to true first
+        loadProfile(currentUser.id, true).finally(() => {
+          initialLoadComplete.current = true;
+          setLoading(false);
+        });
+      } else {
+        initialLoadComplete.current = true;
+        setLoading(false);
+      }
     });
 
-    return () => sub.subscription.unsubscribe();
-  }, []);
+    return () => {
+      sub.subscription.unsubscribe();
+    };
+  }, [loadProfile]);
 
   // Notify when a senior earns Legacy karma (e.g. their advice helped a junior)
   useEffect(() => {
-    if (!user) return;
+    const currentUserId = userIdRef.current;
+    if (!currentUserId) return;
+
     const ch = supabase
-      .channel(`karma-${user.id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "karma_events", filter: `user_id=eq.${user.id}` }, (payload) => {
+      .channel(`karma-${currentUserId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "karma_events", filter: `user_id=eq.${currentUserId}` }, (payload) => {
         const e = (payload.new ?? {}) as KarmaEventRow;
         if (!e?.action || typeof e.points !== "number") return;
         const LEGACY = new Set(["advice_upvoted", "interview_post", "mentorship_completed", "resume_review", "mock_interview"]);
@@ -120,25 +172,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           "karma";
         emitReward(e.points, label, kind);
         if (e.action === "advice_upvoted") toast.success(`Your advice helped a junior! +${e.points} Legacy`);
-        loadProfile(user.id);
+        // Use userIdRef to get current user ID, not stale closure variable
+        if (userIdRef.current) {
+          loadProfile(userIdRef.current, false);
+        }
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [user?.id]);
+  }, [user?.id, loadProfile]);
 
   return (
     <Ctx.Provider
-      value={{
+      value={useMemo(() => ({
         user,
         session,
         profile,
         loading,
-        refreshProfile: async () => user && loadProfile(user.id),
+        refreshProfile: async () => {
+          const uid = userIdRef.current;
+          if (uid) {
+            await loadProfile(uid, false);
+          }
+        },
         signOut: async () => {
           await supabase.auth.signOut();
           navigate("/auth", { replace: true });
         },
-      }}
+      }), [user, session, profile, loading, loadProfile, navigate])}
     >
       {children}
     </Ctx.Provider>
