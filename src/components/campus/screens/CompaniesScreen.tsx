@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Newspaper, Sparkles, RefreshCw, ExternalLink, Filter, Loader2, AlertCircle, Clock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Newspaper, Sparkles, RefreshCw, ExternalLink, Filter, Loader2, AlertCircle, Clock, Building2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { CompanySearch } from "@/components/companies";
 
 type Article = {
   id: string;
@@ -36,10 +38,15 @@ const BRANCH_LABEL: Record<string, string> = {
 type FilterKey = "all" | "branch" | "ai";
 
 export function CompaniesScreen() {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const branch = profile?.branch || "Other";
   const branchLabel = BRANCH_LABEL[branch] ?? "Your Field";
   const [filter, setFilter] = useState<FilterKey>("all");
+
+  const handleCompanySelect = (company: { name: string }) => {
+    navigate(`/companies/${encodeURIComponent(company.name)}`);
+  };
 
   const { data, isLoading, isFetching, isError, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["branch-news", branch],
@@ -73,12 +80,29 @@ export function CompaniesScreen() {
   const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
 
   return (
-    <div className="pb-24">
-      {/* Hero */}
-      <div className="relative overflow-hidden rounded-b-3xl px-4 pt-4 pb-6 text-primary-foreground" style={{ background: "var(--gradient-hero)" }}>
-        <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
-        <div className="relative">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-wider opacity-80">
+    <div className="space-y-4 pb-20">
+      {/* Header */}
+      <div className="space-y-2">
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <Building2 className="h-5 w-5 text-primary" />
+          Companies
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Real-time recruitment intelligence terminal
+        </p>
+      </div>
+
+      {/* Search */}
+      <CompanySearch
+        onSelect={handleCompanySelect}
+        placeholder="Search companies..."
+      />
+
+      {/* Live Status Ticker Tape */}
+      <div className="sticky top-0 z-10 backdrop-blur-xl bg-glass-card border border-white/10 rounded-lg overflow-hidden shadow-soft">
+        <div className="flex items-center gap-3 px-3 py-2 overflow-x-auto">
+          {/* Pulsing dots */}
+          <div className="flex items-center gap-1 flex-shrink-0">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
