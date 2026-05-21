@@ -37,10 +37,8 @@ type View =
   | { name: "plan"; planId: string }
   | { name: "task"; planId: string; taskId: string };
 
-const sb = supabase as unknown as {
-  from: (t: string) => ReturnType<typeof supabase.from>;
-  functions: typeof supabase.functions;
-};
+// New prep tables aren't in generated types yet; cast to any for runtime use.
+const sb = supabase as unknown as any;
 
 export function LearnScreen() {
   const { user, profile } = useAuth();
