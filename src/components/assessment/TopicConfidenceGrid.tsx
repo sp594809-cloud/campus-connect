@@ -31,7 +31,7 @@ export function TopicConfidenceGrid({
   const [assessments, setAssessments] = useState<TopicSelfAssessment[]>(initialAssessments);
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
 
-  const topics = relevantTopics || Object.values(TopicEnum);
+  const topics = relevantTopics || Object.values(CoreTopic);
 
   useEffect(() => {
     // Initialize with default ratings if not provided
