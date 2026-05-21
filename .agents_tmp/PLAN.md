@@ -1,124 +1,157 @@
 # 1. OBJECTIVE
-Create a Discovery-First Personalized Learning System that assesses each student's current skill level, identifies learning gaps, and generates a personalized learning path before entering interview preparation. This system differentiates content based on student year (1st to 4th year) and focuses on filling knowledge gaps first.
+Build a completely NEW Preparation Function that features proper quiz flow: subject selection → topic selection → progressive questions (easy→medium→hard) with correct UX where users MUST answer before moving to next question, plus full learning dashboard showing progress and "what to do next" recommendations.
 
 # 2. CONTEXT SUMMARY
 - **Platform**: Campus Connect (React + TypeScript + Vite)
-- **Tech Stack**: React, TypeScript, Supabase, Firebase, React Router, TanStack Query
-- **Problem**: Students (1st to 4th year) have varying skill levels, but current platform jumps straight to interview prep without assessing readiness
-- **Solution**: Discovery phase to assess → Gap analysis → Personalized learning path → Then interview prep
-- **Core Topics**: DSA, DBMS, OS, CN, Aptitude, Soft Skills, System Design (for advanced students)
-- **Competency Framework**: Using research-backed proficiency bands (Developing → Proficient → Expert)
+- **Current Problems**:
+  1. Quiz auto-advances without user answering (1→2→3 moves automatically)
+  2. No visibility of learning process (don't know what to do next)
+  3. No progress report showing student learning status
+  
+- **Problems to Fix**: New quiz flow with forced answer submission, learning dashboard, progress tracking
 
 # 3. APPROACH OVERVIEW
-Five-phase discovery system:
-1. **Self-Report Intake**: Student selects year, target companies, topics already covered
-2. **Confidence Self-Assessment**: Rate confidence 1-5 on each core topic
-3. **Adaptive Diagnostic Quiz**: Short quiz that adapts difficulty based on answers
-4. **Gap Analysis**: Generate proficiency bands and identifyweaknesses
-5. **Personalized Learning Path**: Recommend topics to focus on, ordered by priority
+New 3-Phase Learning System:
 
-The system maintains student profiles with their proficiency history, enabling progressive tracking throughout their campus journey.
+**Phase 1: Subject & Topic Selection**
+- Show all subjects (DSA, DBMS, OS, CN, Aptitude, System Design)
+- Each subject has multiple topics inside
+- User selects ONE topic to practice
+
+**Phase 2: Progressive Question Flow**
+- Level-based: Easy → Medium → Hard (must complete each set)
+- MUST answer question before "Next" button becomes active
+- Immediate feedback: show correct/incorrect + explanation
+- Cannot skip or auto-advance
+- Each difficulty has 5-10 questions minimum
+
+**Phase 3: Learning Dashboard**
+- Overall progress percentage
+- Per-topic breakdown (completed/in-progress/not-started)
+- "What to do next" - clear recommendations
+- Strengths and Weaknesses analysis
+- Streak and achievements
 
 # 4. IMPLEMENTATION STEPS
 
-**Step 1: Define competency framework and data types**
-- Goal: Create TypeScript interfaces for assessment system
+**Step 1: Create Subject Selection Screen**
+- Goal: Allow user to select which subject to practice
 - Method:
-  - Define core topics with categories: DSA, DBMS, OS, CN, Aptitude, Soft Skills, System Design
-  - Create proficiency levels enum: developing, proficient, expert
-  - Define assessment question types
-  - Map topics to student years (foundation → intermediate → advanced)
-- Reference: New file `src/core/assessmentTypes.ts`
+  - Display all subjects as cards with icons
+  - Show progress indicator per subject
+  - Include: DSA, DBMS, OS, CN, Aptitude, Soft Skills, System Design
+- Reference: New `src/components/preparation/SubjectSelection.tsx`
 
-**Step 2: Create discovery/intake form**
-- Goal: Collect initial student data for assessment
+**Step 2: Create Topic Selection Screen**
+- Goal: Show topics within selected subject
 - Method:
-  - Create `DiscoveryIntake.tsx` component
-  - Fields: current year (1-4), target roles (SDE, Data Science, etc.), target company types
-  - Optional skip with "quick start" option for returning students
-- Reference: New component in `src/components/assessment/`
+  - List all topics for chosen subject
+  - Show difficulty level and question count
+  - Allow filtering: Not Started / In Progress / Completed
+- Reference: New `src/components/preparation/TopicSelection.tsx`
 
-**Step 3: Build confidence self-assessment component**
-- Goal: Let students rate their own confidence per topic
+**Step 3: Build Fixed Progressive Quiz Component**
+- Goal: Quiz that ONLY advances after answering
 - Method:
-  - Create `TopicConfidenceGrid.tsx` component
-  - Display all core topics with slider/rating (1-5 stars)
-  - Show topic descriptions for clarity
-  - Save self-ratings to student profile
-- Reference: New component in `src/components/assessment/`
+  - Questions stored in ordered array (Easy first, then Medium, then Hard)
+  - "Next" button disabled until user SELECTS an answer
+  - After selecting answer, user must click "Submit" to check
+  - Show result (correct/incorrect) + explanation
+  - "Next" appears only AFTER submit
+  - Cannot auto-advance - forced user action
+- Reference: Replace `src/components/assessment/DiagnosticQuiz.tsx` with new `src/components/preparation/ProgressiveQuiz.tsx`
 
-**Step 4: Create adaptive diagnostic quiz engine**
-- Goal: Generate short quizzes that adapt difficulty based on answers
+**Step 4: Create Question Bank per Difficulty**
+- Goal: Enough questions at each difficulty level
 - Method:
-  - Create `DiagnosticQuiz.tsx` component
-  - Implement question pool per topic with difficulty tiers
-  - Track streak and adjust difficulty mid-quiz
-  - Timeout handling and progress saving
-  - Quick 5-10 question format (not exhaustive)
-- Reference: New component in `src/components/assessment/`
+  - Easy: 10 questions per topic
+  - Medium: 10 questions per topic
+  - Hard: 10 questions per topic
+  - Generate from AI when needed (see note below)
+  - Store in organized structure by topic and difficulty
+- Reference: `src/data/preparation/questions/` folder with topic-based files
 
-**Step 5: Build gap analysis engine**
-- Goal: Calculate proficiency bands and identify learning gaps
-- Method:
-  - Create `useGapAnalysis.ts` hook
-  - Combine self-assessment + diagnostic results
-  - Weight scoring: self-confidence (30%) + diagnostic (70%)
-  - Calculate proficiency bands per topic
-  - Rank gaps by severity and importance
-- Reference: New hook in `src/hooks/`
+**Note on Question Generation**: Questions can be dynamically generated when needed using AI - this is acceptable as it creates NEW questions in similar patterns, not exact copies of copyrighted material.
 
-**Step 6: Generate personalized learning path**
-- Goal: Create actionable learning recommendations
+**Step 5: Build Learning Dashboard**
+- Goal: Show complete learning status and what to do next
 - Method:
-  - Create `LearningPathGenerator.ts` utility
-  - Based on gap analysis results
-  - Order topics by: gap severity + student year relevance
-  - Generate "What to learn next" ordered list
-  - Include estimated time per topic
-- Reference: New utility in `src/lib/assessment/`
+  - Overall progress ring/chart
+  - Per-topic cards with status indicators
+  - "Continue Learning" prominent CTA
+  - Recent activity history
+  - Upcoming recommendations based on gaps
+- Reference: New `src/components/preparation/LearningDashboard.tsx`
 
-**Step 7: Create Gap Report UI**
-- Goal: Display assessment results visually
+**Step 6: Create Progress Report Card**
+- Goal: Detailed learning analysis
 - Method:
-  - Create `GapReportCard.tsx` component
-  - Visual proficiency bands using colors (red → yellow → green)
-  - Show "priority queue" of topics to learn
-  - Export/share capability for mentorship discussions
-- Reference: New component in `src/components/assessment/`
+  - Score breakdown per topic
+  - Time spent learning
+  - Accuracy percentage
+  - Strong areas (green)
+  - Areas to improve (red/orange)
+  - Suggested next steps
+- Reference: New `src/components/preparation/ProgressReport.tsx`
 
-**Step 8: Integrate assessment into Campus App**
-- Goal: Add assessment entry point in navigation
+**Step 7: Build "What to Do Next" Engine**
+- Goal: Intelligent recommendations
 - Method:
-  - Add new tab or section in CampusApp for "Prepare"
-  - Link to discovery flow from existing navigation
-  - Show assessment status badge (not started / in progress / complete)
-- Reference: `src/pages/CampusApp.tsx`
+  - Analyze completed topics
+  - Check partially completed topics
+  - Recommend next easiest uncompleted topic
+  - Show expected difficulty level
+- Reference: New `src/hooks/useNextRecommendation.ts`
 
-**Step 9: Create learning path tracking**
-- Goal: Track progress through personalized learning path
+**Step 8: Add Progress Persistence**
+- Goal: Save learning progress to database
 - Method:
-  - Create `LearningProgressTracker.tsx` component
-  - Mark topics as "learning", "practicing", "mastered"
-  - Re-assess option after completing topic
-  - Connect with existing Karma/Badge system
-- Reference: New component in `src/components/assessment/`
+  - Store in Supabase: `preparation_progress` table
+  - Track: topic_id, difficulty, score, time_spent, completed_at
+  - Sync across devices
+- Reference: New `src/integrations/supabase/preparation.ts`
 
-**Step 10: Build bridge to interview prep**
-- Goal: Unlock interview prep only after foundation readiness
+**Step 9: Integrate into Campus Navigation**
+- Goal: Add "Prepare" entry point
 - Method:
-  - Create `PrepReadinessGate.tsx` component
-  - Minimum threshold: 50%+ topics at "Proficient" or above
-  - Below threshold: Redirect to learning path
-  - Above threshold: Unlock interview prep features
-- Reference: Component integrates with existing interview features
+  - Add new bottom nav item or menu option
+  - Link directly to dashboard
+  - Show badge for pending learning
+- Reference: Update `CampusApp.tsx` and `BottomNav.tsx`
+
+**Step 10: Build Completion & Celebration**
+- Goal: Motivational rewards
+- Method:
+  - Confetti on topic completion
+  - Badges for milestones (first topic, all easy completed, etc.)
+  - Share achievement capability
+- Reference: Add to `LearningDashboard.tsx`
 
 # 5. TESTING AND VALIDATION
-- **Intake Form**: User can complete intake in under 2 minutes
-- **Confidence Grid**: All topics displayed with clear rating interface
-- **Diagnostic Quiz**: Completes in 5-10 minutes with adaptive difficulty
-- **Gap Report**: Shows clear color-coded proficiency per topic
-- **Learning Path**: Generates ordered "next steps" list
-- **Year Differentiation**: 1st year sees fundamentals, 4th year sees advanced
-- **Progress Tracking**: Can update proficiency as they learn
-- **Prep Gate**: Blocks interview prep until ready (optional bypass)
-- **Integration**: Connected with existing Campus navigation
+
+**Subject Selection**: All subjects visible with progress indicators
+**Topic Selection**: Topics filter by status correctly
+**Progressive Quiz Flow**: 
+- Answer MUST be selected before Submit enables
+- NEXT only appears after SUBMIT clicked
+- No auto-advance - intentional button clicks required
+- Questions progress Easy → Medium → Hard in order
+**Learning Dashboard**:
+- Shows overall progress percentage
+- "What to do next" prominently displayed
+- Clear visual indicators for done/not-done
+**Progress Report**:
+- Accurate score breakdown per topic
+- Strengths shown in green
+- Weaknesses highlighted with recommendations
+**Persistence**: Progress saves and restores correctly
+
+---
+
+## KEY UX RULES (Critical)
+
+1. **NEVER auto-advance** - User MUST click to proceed
+2. **Require explicit answer selection** before enabling submit
+3. **Immediate feedback** after each answer
+4. **Clear progress visibility** at all times
+5. **One-click "What to do next"** always available
