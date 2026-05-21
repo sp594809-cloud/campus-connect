@@ -11,6 +11,9 @@ import { TOPIC_BANKS, getTopicsForSubject, getTopicBank, getAllQuestionsForTopic
 
 type View = 'dashboard' | 'subjects' | 'topics' | 'quiz' | 'report';
 
+// NOTE: localStorage is intentional here — this only stores non-sensitive
+// quiz progress (topic ids, scores, time spent). No PII, no auth tokens.
+// If you ever extend this to per-user cloud sync, move to Supabase instead.
 const STORAGE_KEY = 'campus.prep.progress.v1';
 
 type CompletedMap = Record<string, { completedQuestionIds: string[]; lastScore: number; timeSpent: number; difficulty: 'easy' | 'medium' | 'hard' }>;

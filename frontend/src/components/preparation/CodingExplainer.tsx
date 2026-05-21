@@ -51,7 +51,7 @@ export function CodingExplainer({ subject, topic, question, className }: Props) 
         </div>
         <ol className="space-y-2">
           {data.logic_steps.map((step, i) => (
-            <li key={i} className="flex gap-3 text-sm leading-relaxed">
+            <li key={`${i}-${step.slice(0, 32)}`} className="flex gap-3 text-sm leading-relaxed">
               <span className="shrink-0 w-6 h-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center">
                 {i + 1}
               </span>

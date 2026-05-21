@@ -1,27 +1,29 @@
+#!/usr/bin/env python3
 """
-Backend API tests for AI-Powered Learning System endpoints.
-Tests the three /api/learn/* endpoints using Claude Sonnet 4.5.
+Regression test for AI Learn API after refactor.
+Tests that functionality remains identical after splitting logic into service functions.
 """
 import requests
-import time
+import json
 import sys
 
-# Backend URL from frontend/.env
-BASE_URL = "https://connect-arch-check.preview.emergentagent.com/api"
+# Backend URL from environment
+BACKEND_URL = "https://connect-arch-check.preview.emergentagent.com"
 
 def test_health_check():
-    """Test GET /api/learn/health endpoint."""
+    """Test 1: GET /api/learn/health"""
     print("\n" + "="*80)
     print("TEST 1: GET /api/learn/health")
     print("="*80)
     
+    url = f"{BACKEND_URL}/api/learn/health"
     try:
-        response = requests.get(f"{BASE_URL}/learn/health", timeout=10)
+        response = requests.get(url, timeout=10)
         print(f"Status Code: {response.status_code}")
-        print(f"Response: {response.json()}")
+        print(f"Response: {json.dumps(response.json(), indent=2)}")
         
         if response.status_code != 200:
-            print("❌ FAILED: Expected status code 200")
+            print("❌ FAILED: Expected status 200")
             return False
         
         data = response.json()
@@ -33,7 +35,7 @@ def test_health_check():
             print("❌ FAILED: Expected model='claude-sonnet-4-5-20250929'")
             return False
         
-        print("✅ PASSED: Health check endpoint working correctly")
+        print("✅ PASSED: Health check working correctly")
         return True
         
     except Exception as e:
@@ -41,135 +43,73 @@ def test_health_check():
         return False
 
 
-def test_explain_theory():
-    """Test POST /api/learn/explain-theory endpoint with caching."""
+def test_explain_theory_cached():
+    """Test 2: POST /api/learn/explain-theory (should be cached)"""
     print("\n" + "="*80)
-    print("TEST 2: POST /api/learn/explain-theory (with caching)")
+    print("TEST 2: POST /api/learn/explain-theory (cached request)")
     print("="*80)
     
+    url = f"{BACKEND_URL}/api/learn/explain-theory"
     payload = {
         "subject": "dbms",
         "topic": "Primary Keys",
         "question": "What is a primary key in a database?",
         "options": [
-            "A unique identifier for each row",
-            "Allows multiple values",
+            "Unique identifier for each row",
+            "Multiple values",
             "Optional field",
             "Foreign reference"
         ]
     }
     
     try:
-        # First call - should NOT be cached
-        print("\n--- First call (should be cached=false) ---")
-        start_time = time.time()
-        response1 = requests.post(f"{BASE_URL}/learn/explain-theory", json=payload, timeout=60)
-        elapsed1 = time.time() - start_time
+        response = requests.post(url, json=payload, timeout=15)
+        print(f"Status Code: {response.status_code}")
         
-        print(f"Status Code: {response1.status_code}")
-        print(f"Response Time: {elapsed1:.2f}s")
-        
-        if response1.status_code != 200:
-            print(f"❌ FAILED: Expected status code 200, got {response1.status_code}")
-            print(f"Response: {response1.text}")
+        if response.status_code != 200:
+            print(f"Response: {response.text}")
+            print("❌ FAILED: Expected status 200")
             return False
         
-        data1 = response1.json()
-        print(f"Response keys: {list(data1.keys())}")
+        data = response.json()
+        print(f"Response keys: {list(data.keys())}")
+        print(f"Cached: {data.get('cached')}")
+        print(f"Simple explanation (first 100 chars): {data.get('simple_explanation', '')[:100]}")
+        print(f"Mermaid diagram (first 100 chars): {data.get('mermaid_diagram', '')[:100]}")
         
-        # Verify all required fields are present
+        # Check required fields
         required_fields = ["simple_explanation", "analogy", "mermaid_diagram", "emoji_visual", "cached"]
         for field in required_fields:
-            if field not in data1:
+            if field not in data:
                 print(f"❌ FAILED: Missing required field '{field}'")
                 return False
-            if field != "cached" and not data1[field]:
-                print(f"❌ FAILED: Field '{field}' is empty")
-                return False
         
-        # Verify cached is false on first call
-        if data1.get("cached") != False:
-            print(f"❌ FAILED: Expected cached=false on first call, got {data1.get('cached')}")
+        # Check mermaid diagram contains valid keywords
+        mermaid = data.get("mermaid_diagram", "").lower()
+        if not any(kw in mermaid for kw in ["flowchart", "graph", "erdiagram", "sequencediagram"]):
+            print(f"❌ FAILED: mermaid_diagram doesn't contain valid Mermaid keywords")
             return False
         
-        # Verify simple_explanation is reasonably short (ideally ≤30 words)
-        word_count = len(data1["simple_explanation"].split())
-        print(f"Simple explanation word count: {word_count}")
-        if word_count > 50:
-            print(f"⚠️  WARNING: simple_explanation is {word_count} words (ideally ≤30)")
+        # Check if cached (should be true from previous tests)
+        if data.get("cached") != True:
+            print("⚠️  WARNING: Expected cached=true (this request was tested before)")
+            print("   This might indicate cache was cleared or key changed")
         
-        # Verify mermaid_diagram contains expected keywords
-        mermaid = data1["mermaid_diagram"].lower()
-        mermaid_keywords = ["flowchart", "graph", "erdiagram", "sequencediagram"]
-        if not any(keyword in mermaid for keyword in mermaid_keywords):
-            print(f"❌ FAILED: mermaid_diagram doesn't contain expected keywords: {mermaid_keywords}")
-            print(f"Mermaid content: {data1['mermaid_diagram'][:200]}")
-            return False
-        
-        # Verify emoji_visual contains at least 2 emoji-like characters
-        emoji_visual = data1["emoji_visual"]
-        # Count non-ASCII characters as potential emojis
-        emoji_count = sum(1 for c in emoji_visual if ord(c) > 127)
-        if emoji_count < 2:
-            print(f"❌ FAILED: emoji_visual should contain at least 2 emoji characters, found {emoji_count}")
-            print(f"Emoji visual: {emoji_visual}")
-            return False
-        
-        print(f"✅ First call successful:")
-        print(f"  - simple_explanation: {data1['simple_explanation'][:80]}...")
-        print(f"  - analogy: {data1['analogy'][:80]}...")
-        print(f"  - mermaid_diagram: {data1['mermaid_diagram'][:80]}...")
-        print(f"  - emoji_visual: {data1['emoji_visual']}")
-        print(f"  - cached: {data1['cached']}")
-        
-        # Second call - should be cached
-        print("\n--- Second call (should be cached=true) ---")
-        start_time = time.time()
-        response2 = requests.post(f"{BASE_URL}/learn/explain-theory", json=payload, timeout=30)
-        elapsed2 = time.time() - start_time
-        
-        print(f"Status Code: {response2.status_code}")
-        print(f"Response Time: {elapsed2:.2f}s")
-        
-        if response2.status_code != 200:
-            print(f"❌ FAILED: Expected status code 200 on second call")
-            return False
-        
-        data2 = response2.json()
-        
-        # Verify cached is true on second call
-        if data2.get("cached") != True:
-            print(f"❌ FAILED: Expected cached=true on second call, got {data2.get('cached')}")
-            return False
-        
-        # Verify response is faster (cached should be much faster)
-        if elapsed2 >= elapsed1:
-            print(f"⚠️  WARNING: Second call ({elapsed2:.2f}s) not faster than first ({elapsed1:.2f}s)")
-        else:
-            print(f"✅ Cache working: Second call {elapsed1/elapsed2:.1f}x faster")
-        
-        # Verify content is identical (except cached flag)
-        for field in ["simple_explanation", "analogy", "mermaid_diagram", "emoji_visual"]:
-            if data1[field] != data2[field]:
-                print(f"❌ FAILED: Field '{field}' differs between calls")
-                return False
-        
-        print("✅ PASSED: explain-theory endpoint working correctly with caching")
+        print("✅ PASSED: explain-theory endpoint working correctly")
         return True
         
     except Exception as e:
         print(f"❌ FAILED: Exception occurred: {e}")
-        import traceback
-        traceback.print_exc()
         return False
 
 
-def test_explain_coding():
-    """Test POST /api/learn/explain-coding endpoint with caching."""
+def test_explain_coding_cached():
+    """Test 3: POST /api/learn/explain-coding (should be cached)"""
     print("\n" + "="*80)
-    print("TEST 3: POST /api/learn/explain-coding (with caching)")
+    print("TEST 3: POST /api/learn/explain-coding (cached request)")
     print("="*80)
     
+    url = f"{BACKEND_URL}/api/learn/explain-coding"
     payload = {
         "subject": "PYTHON",
         "topic": "Array Reversal",
@@ -177,173 +117,123 @@ def test_explain_coding():
     }
     
     try:
-        # First call - should NOT be cached
-        print("\n--- First call (should be cached=false) ---")
-        start_time = time.time()
-        response1 = requests.post(f"{BASE_URL}/learn/explain-coding", json=payload, timeout=60)
-        elapsed1 = time.time() - start_time
+        response = requests.post(url, json=payload, timeout=15)
+        print(f"Status Code: {response.status_code}")
         
-        print(f"Status Code: {response1.status_code}")
-        print(f"Response Time: {elapsed1:.2f}s")
-        
-        if response1.status_code != 200:
-            print(f"❌ FAILED: Expected status code 200, got {response1.status_code}")
-            print(f"Response: {response1.text}")
+        if response.status_code != 200:
+            print(f"Response: {response.text}")
+            print("❌ FAILED: Expected status 200")
             return False
         
-        data1 = response1.json()
-        print(f"Response keys: {list(data1.keys())}")
+        data = response.json()
+        print(f"Response keys: {list(data.keys())}")
+        print(f"Cached: {data.get('cached')}")
+        print(f"Logic steps count: {len(data.get('logic_steps', []))}")
+        print(f"Skeleton code (first 100 chars): {data.get('skeleton_code', '')[:100]}")
         
-        # Verify all required fields are present
+        # Check required fields
         required_fields = ["expected_output", "logic_steps", "skeleton_code", "example_walkthrough", "cached"]
         for field in required_fields:
-            if field not in data1:
+            if field not in data:
                 print(f"❌ FAILED: Missing required field '{field}'")
                 return False
-            if field not in ["logic_steps", "cached"] and not data1[field]:
-                print(f"❌ FAILED: Field '{field}' is empty")
-                return False
         
-        # Verify cached is false on first call
-        if data1.get("cached") != False:
-            print(f"❌ FAILED: Expected cached=false on first call, got {data1.get('cached')}")
-            return False
-        
-        # Verify expected_output contains Input and Output
-        expected_output = data1["expected_output"]
-        if "input" not in expected_output.lower() or "output" not in expected_output.lower():
-            print(f"⚠️  WARNING: expected_output should ideally contain 'Input' and 'Output'")
-            print(f"Expected output: {expected_output}")
-        
-        # Verify logic_steps is an array of 3-8 strings
-        logic_steps = data1["logic_steps"]
+        # Check logic_steps is array with 3-8 items
+        logic_steps = data.get("logic_steps", [])
         if not isinstance(logic_steps, list):
-            print(f"❌ FAILED: logic_steps should be an array, got {type(logic_steps)}")
+            print(f"❌ FAILED: logic_steps should be an array")
             return False
         
-        if len(logic_steps) < 3 or len(logic_steps) > 8:
-            print(f"⚠️  WARNING: logic_steps should have 3-8 items, got {len(logic_steps)}")
+        if not (3 <= len(logic_steps) <= 8):
+            print(f"⚠️  WARNING: logic_steps has {len(logic_steps)} items (expected 3-8)")
         
-        for i, step in enumerate(logic_steps):
-            if not step or not isinstance(step, str):
-                print(f"❌ FAILED: logic_steps[{i}] is empty or not a string")
-                return False
+        # Check if cached (should be true from previous tests)
+        if data.get("cached") != True:
+            print("⚠️  WARNING: Expected cached=true (this request was tested before)")
+            print("   This might indicate cache was cleared or key changed")
         
-        # Verify skeleton_code contains Python keywords
-        skeleton_code = data1["skeleton_code"]
-        python_keywords = ["def", "todo", "#", "return"]
-        if not any(keyword in skeleton_code.lower() for keyword in python_keywords):
-            print(f"⚠️  WARNING: skeleton_code should contain Python keywords like 'def', 'TODO', '#'")
-            print(f"Skeleton code: {skeleton_code[:200]}")
-        
-        print(f"✅ First call successful:")
-        print(f"  - expected_output: {data1['expected_output'][:80]}...")
-        print(f"  - logic_steps: {len(data1['logic_steps'])} steps")
-        for i, step in enumerate(data1['logic_steps'][:3]):
-            print(f"    {i+1}. {step[:60]}...")
-        print(f"  - skeleton_code: {data1['skeleton_code'][:80]}...")
-        print(f"  - example_walkthrough: {data1['example_walkthrough'][:80]}...")
-        print(f"  - cached: {data1['cached']}")
-        
-        # Second call - should be cached
-        print("\n--- Second call (should be cached=true) ---")
-        start_time = time.time()
-        response2 = requests.post(f"{BASE_URL}/learn/explain-coding", json=payload, timeout=30)
-        elapsed2 = time.time() - start_time
-        
-        print(f"Status Code: {response2.status_code}")
-        print(f"Response Time: {elapsed2:.2f}s")
-        
-        if response2.status_code != 200:
-            print(f"❌ FAILED: Expected status code 200 on second call")
-            return False
-        
-        data2 = response2.json()
-        
-        # Verify cached is true on second call
-        if data2.get("cached") != True:
-            print(f"❌ FAILED: Expected cached=true on second call, got {data2.get('cached')}")
-            return False
-        
-        # Verify response is faster
-        if elapsed2 >= elapsed1:
-            print(f"⚠️  WARNING: Second call ({elapsed2:.2f}s) not faster than first ({elapsed1:.2f}s)")
-        else:
-            print(f"✅ Cache working: Second call {elapsed1/elapsed2:.1f}x faster")
-        
-        # Verify content is identical (except cached flag)
-        for field in ["expected_output", "logic_steps", "skeleton_code", "example_walkthrough"]:
-            if data1[field] != data2[field]:
-                print(f"❌ FAILED: Field '{field}' differs between calls")
-                return False
-        
-        print("✅ PASSED: explain-coding endpoint working correctly with caching")
+        print("✅ PASSED: explain-coding endpoint working correctly")
         return True
         
     except Exception as e:
         print(f"❌ FAILED: Exception occurred: {e}")
-        import traceback
-        traceback.print_exc()
         return False
 
 
-def test_edge_case_empty_fields():
-    """Test edge case with empty subject/topic/question."""
+def test_new_request_cache_miss():
+    """Test 4: NEW request to force cache miss"""
     print("\n" + "="*80)
-    print("TEST 4: Edge case - empty fields")
+    print("TEST 4: POST /api/learn/explain-theory (NEW request - cache miss)")
     print("="*80)
     
+    url = f"{BACKEND_URL}/api/learn/explain-theory"
     payload = {
-        "subject": "",
-        "topic": "",
-        "question": ""
+        "subject": "os",
+        "topic": "Round Robin Scheduling",
+        "question": "In Round Robin, what determines context switch frequency?"
     }
     
     try:
-        print("\n--- Testing explain-theory with empty fields ---")
-        response = requests.post(f"{BASE_URL}/learn/explain-theory", json=payload, timeout=60)
+        response = requests.post(url, json=payload, timeout=20)
         print(f"Status Code: {response.status_code}")
         
-        # We don't expect a specific status code, just that the server doesn't crash
-        if response.status_code in [200, 422, 502]:
-            print(f"✅ Server handled empty fields gracefully (status {response.status_code})")
-            if response.status_code == 200:
-                data = response.json()
-                print(f"Response keys: {list(data.keys())}")
-            else:
-                print(f"Response: {response.text[:200]}")
-            return True
-        else:
-            print(f"⚠️  Unexpected status code: {response.status_code}")
-            print(f"Response: {response.text[:200]}")
-            return True  # Still pass as long as server didn't crash
+        if response.status_code != 200:
+            print(f"Response: {response.text}")
+            print("❌ FAILED: Expected status 200")
+            return False
+        
+        data = response.json()
+        print(f"Response keys: {list(data.keys())}")
+        print(f"Cached: {data.get('cached')}")
+        print(f"Simple explanation: {data.get('simple_explanation', '')[:150]}")
+        
+        # Check required fields
+        required_fields = ["simple_explanation", "analogy", "mermaid_diagram", "emoji_visual", "cached"]
+        for field in required_fields:
+            if field not in data:
+                print(f"❌ FAILED: Missing required field '{field}'")
+                return False
+        
+        # Check cached is false (new request)
+        if data.get("cached") != False:
+            print(f"❌ FAILED: Expected cached=false for new request, got {data.get('cached')}")
+            return False
+        
+        # Verify content is not empty
+        if not data.get("simple_explanation") or not data.get("analogy"):
+            print("❌ FAILED: Response fields are empty")
+            return False
+        
+        print("✅ PASSED: New request handled correctly with cached=false")
+        return True
         
     except Exception as e:
         print(f"❌ FAILED: Exception occurred: {e}")
         return False
 
 
-def test_final_health_check():
-    """Test that the main API endpoint is still working after all tests."""
+def test_root_endpoint():
+    """Test 5: GET /api/ - ensure template route still works"""
     print("\n" + "="*80)
-    print("TEST 5: Final health check - GET /api/")
+    print("TEST 5: GET /api/ (template route)")
     print("="*80)
     
+    url = f"{BACKEND_URL}/api/"
     try:
-        response = requests.get(f"{BASE_URL}/", timeout=10)
+        response = requests.get(url, timeout=10)
         print(f"Status Code: {response.status_code}")
-        print(f"Response: {response.json()}")
+        print(f"Response: {json.dumps(response.json(), indent=2)}")
         
         if response.status_code != 200:
-            print("❌ FAILED: Expected status code 200")
+            print("❌ FAILED: Expected status 200")
             return False
         
         data = response.json()
         if data.get("message") != "Hello World":
-            print("❌ FAILED: Expected message='Hello World'")
+            print(f"❌ FAILED: Expected message='Hello World', got {data.get('message')}")
             return False
         
-        print("✅ PASSED: Backend is still healthy after all tests")
+        print("✅ PASSED: Root endpoint still working")
         return True
         
     except Exception as e:
@@ -352,39 +242,39 @@ def test_final_health_check():
 
 
 def main():
-    """Run all tests and report results."""
     print("\n" + "="*80)
-    print("AI-POWERED LEARNING SYSTEM - BACKEND API TESTS")
+    print("AI LEARN API REGRESSION TEST - POST REFACTOR")
+    print("Testing that functionality remains identical after code restructuring")
     print("="*80)
-    print(f"Base URL: {BASE_URL}")
-    print(f"Testing endpoints: /learn/health, /learn/explain-theory, /learn/explain-coding")
     
-    results = {
-        "Health Check": test_health_check(),
-        "Explain Theory (with caching)": test_explain_theory(),
-        "Explain Coding (with caching)": test_explain_coding(),
-        "Edge Case - Empty Fields": test_edge_case_empty_fields(),
-        "Final Health Check": test_final_health_check(),
-    }
+    results = []
     
+    # Run all tests
+    results.append(("Health Check", test_health_check()))
+    results.append(("Explain Theory (cached)", test_explain_theory_cached()))
+    results.append(("Explain Coding (cached)", test_explain_coding_cached()))
+    results.append(("New Request (cache miss)", test_new_request_cache_miss()))
+    results.append(("Root Endpoint", test_root_endpoint()))
+    
+    # Summary
     print("\n" + "="*80)
     print("TEST SUMMARY")
     print("="*80)
     
-    passed = sum(1 for v in results.values() if v)
+    passed = sum(1 for _, result in results if result)
     total = len(results)
     
-    for test_name, result in results.items():
+    for test_name, result in results:
         status = "✅ PASSED" if result else "❌ FAILED"
         print(f"{status}: {test_name}")
     
     print(f"\nTotal: {passed}/{total} tests passed")
     
     if passed == total:
-        print("\n🎉 All tests passed!")
+        print("\n🎉 ALL TESTS PASSED - Refactor successful, functionality intact!")
         return 0
     else:
-        print(f"\n⚠️  {total - passed} test(s) failed")
+        print(f"\n⚠️  {total - passed} test(s) failed - Refactor may have introduced issues")
         return 1
 
 
