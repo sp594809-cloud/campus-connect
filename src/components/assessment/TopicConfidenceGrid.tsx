@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Star, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import {
-  type CoreTopic,
+  CoreTopic,
   type SelfRating,
   type TopicSelfAssessment,
-  CoreTopic as TopicEnum,
   TOPIC_CATEGORIES,
 } from '@/core/assessmentTypes';
 
@@ -32,7 +31,7 @@ export function TopicConfidenceGrid({
   const [assessments, setAssessments] = useState<TopicSelfAssessment[]>(initialAssessments);
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
 
-  const topics = relevantTopics || Object.values(TopicEnum);
+  const topics = relevantTopics || Object.values(CoreTopic);
 
   useEffect(() => {
     // Initialize with default ratings if not provided

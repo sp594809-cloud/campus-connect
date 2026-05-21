@@ -48,7 +48,7 @@ export enum QuestionType {
 
 // Topic Category Mapping
 export const TOPIC_CATEGORIES: Record<CoreTopic, {
-  category: 'technical' | ' aptitude' | 'skills';
+  category: 'technical' | 'aptitude' | 'skills';
   priority: number;
   description: string;
 }> = {
