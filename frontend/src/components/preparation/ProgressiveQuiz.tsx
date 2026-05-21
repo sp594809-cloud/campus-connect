@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { ArrowLeft, ChevronRight, CheckCircle, XCircle, Clock, Trophy, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, ChevronRight, CheckCircle, XCircle, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LearnFirstWrapper } from './LearnFirstWrapper';
 
 export type Question = {
   id: string;
@@ -16,6 +17,7 @@ export type Difficulty = 'easy' | 'medium' | 'hard';
 interface ProgressiveQuizProps {
   questions: Question[];
   topicName: string;
+  subjectId?: string;
   onComplete: (result: QuizResult) => void;
   onExit: () => void;
 }
@@ -28,7 +30,7 @@ export type QuizResult = {
   timeSpent: number; // in seconds
 };
 
-export function ProgressiveQuiz({ questions, topicName, onComplete, onExit }: ProgressiveQuizProps) {
+export function ProgressiveQuiz({ questions, topicName, subjectId, onComplete, onExit }: ProgressiveQuizProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -149,6 +151,18 @@ export function ProgressiveQuiz({ questions, topicName, onComplete, onExit }: Pr
 
       {/* Question */}
       <div className="flex-1 p-4 overflow-y-auto">
+        {/* Learn-First AI Explainer (renders before the question) */}
+        {subjectId && (
+          <LearnFirstWrapper
+            subjectId={subjectId}
+            topic={topicName}
+            question={currentQuestion.text}
+            options={currentQuestion.options.map(o => o.text)}
+            resetKey={currentQuestion.id}
+            defaultOpen={!isSubmitted}
+          />
+        )}
+
         <div className="mb-2">
           <span className={cn(
             "text-xs px-2 py-0.5 rounded-full",
