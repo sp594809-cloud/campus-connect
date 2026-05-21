@@ -55,6 +55,13 @@ async def get_status_checks():
 # Include the router in the main app
 app.include_router(api_router)
 
+# AI Learning router (Phase 2 - Claude Sonnet 4.5)
+try:
+    from routers.learn import build_learn_router
+    app.include_router(build_learn_router(db), prefix="/api")
+except Exception as _learn_err:
+    logging.getLogger(__name__).exception("Failed to mount /api/learn router: %s", _learn_err)
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
