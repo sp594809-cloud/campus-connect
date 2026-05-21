@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Clock, CheckCircle, XCircle, ChevronRight, RotateCcw, Zap } from 'lucide-react';
 import {
   CoreTopic,
