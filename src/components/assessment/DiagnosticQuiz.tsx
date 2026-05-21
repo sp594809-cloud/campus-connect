@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Clock, CheckCircle, XCircle, ChevronRight, RotateCcw, Zap } from 'lucide-react';
 import {
-  type CoreTopic,
+  CoreTopic,
   type DiagnosticQuestion,
   type QuizAttempt,
   type DiagnosticResult,
-  CoreTopic as TopicEnum,
   DifficultyTier,
   QuestionType,
 } from '@/core/assessmentTypes';
