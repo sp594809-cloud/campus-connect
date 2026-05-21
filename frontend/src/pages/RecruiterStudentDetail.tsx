@@ -52,7 +52,7 @@ const RecruiterStudentDetail = () => {
       .then(({ data }) => { setSaved(!!data); setShortlisted(!!data?.shortlisted); });
     supabase.from("recruiter_notes").select("id,note,created_at").eq("recruiter_id", user.id).eq("student_id", id).order("created_at", { ascending: false })
       .then(({ data }) => setNotes(data ?? []));
-  }, [user?.id, id]);
+  }, [user, id]);
 
   const score = useMemo(() => {
     if (!profile || !data) return null;

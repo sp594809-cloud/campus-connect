@@ -66,7 +66,12 @@ export function useCodingExplain(req: ExplainRequest, enabled = true) {
   });
 }
 
-export const learnMutations = {
-  theory: () => useMutation({ mutationFn: explainTheory }),
-  coding: () => useMutation({ mutationFn: explainCoding }),
-};
+// Real custom hooks (must start with `use`) — fixes the rules-of-hooks violation
+// from the previous learnMutations.theory() / .coding() factory pattern.
+export function useTheoryExplainMutation() {
+  return useMutation({ mutationFn: explainTheory });
+}
+
+export function useCodingExplainMutation() {
+  return useMutation({ mutationFn: explainCoding });
+}

@@ -45,7 +45,7 @@ const Passport = () => {
   useEffect(() => {
     if (!user) return;
     supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }).then(({ data }) => setIsAdmin(!!data));
-  }, [user?.id]);
+  }, [user]);
 
   const score = useMemo(() => {
     if (!profile || !data) return null;

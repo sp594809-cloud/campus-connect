@@ -38,7 +38,7 @@ export const ShareDrawer = ({ open, onClose, title, url, preview }: Props) => {
       })
       .catch((err) => console.error("[ShareDrawer] profiles", err));
     return () => { alive = false; };
-  }, [open, user?.id, rows]);
+  }, [open, user, rows]);
 
   if (!open) return null;
 

@@ -82,7 +82,7 @@ const RecruiterDashboard = () => {
     supabase.from("recruiter_saved_candidates").select("student_id").eq("recruiter_id", user.id).then(({ data }) => {
       setSavedSet(new Set((data ?? []).map((r: { student_id: string }) => r.student_id)));
     });
-  }, [user?.id, isRecruiter]);
+  }, [user, isRecruiter]);
 
   const toggleSave = async (sid: string) => {
     if (!user) return;
