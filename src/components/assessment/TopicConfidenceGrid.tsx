@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Star, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import {
-  type CoreTopic,
+  CoreTopic,
   type SelfRating,
   type TopicSelfAssessment,
-  CoreTopic as TopicEnum,
   TOPIC_CATEGORIES,
 } from '@/core/assessmentTypes';
 
