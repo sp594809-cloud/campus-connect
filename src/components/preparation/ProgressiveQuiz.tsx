@@ -252,7 +252,7 @@ export function ProgressiveQuiz({ questions, topicName, onComplete, onExit }: Pr
             onClick={handleNext}
             className="w-full py-3 rounded-xl font-medium bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center gap-2"
           >
-            {isLastInDifficulty && difficulty !== 'hard' ? (
+            {isLastInDifficulty && (difficulty as string) !== 'hard' ? (
               <>Next: {difficulty === 'easy' ? 'Medium' : 'Hard'} Level <ChevronRight className="w-4 h-4" /></>
             ) : isLastDifficulty ? (
               <>Complete Quiz <Trophy className="w-4 h-4" /></>
