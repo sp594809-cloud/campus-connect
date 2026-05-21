@@ -11,7 +11,7 @@ import { EventsScreen } from "@/components/campus/screens/EventsScreen";
 import { MessagesScreen } from "@/components/campus/screens/MessagesScreen";
 import { MarketplaceScreen } from "@/components/campus/screens/MarketplaceScreen";
 import { CompaniesScreen } from "@/components/campus/screens/CompaniesScreen";
-import { AssessmentScreen } from "@/components/assessment/AssessmentScreen";
+import { LearnScreen } from "@/components/preparation/LearnScreen";
 import { RewardLayer } from "@/components/campus/RewardLayer";
 import { TierPill } from "@/components/campus/TierPill";
 import { FloatingActions } from "@/components/campus/FloatingActions";
@@ -64,7 +64,7 @@ const CampusApp = () => {
       {tab === "events" && <EventsScreen />}
       {tab === "marketplace" && <MarketplaceScreen />}
       {tab === "companies" && <CompaniesScreen />}
-      {tab === "prepare" && <AssessmentScreen />}
+      {tab === "prepare" && <LearnScreen />}
       {tab === "messages" && (
         <MessagesScreen openWith={openWith} onClearOpen={() => setOpenWith(null)} />
       )}
