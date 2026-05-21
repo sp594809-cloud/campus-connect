@@ -1,5 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
 
+// Note: `preparation_progress` table is not yet in the generated Supabase types.
+// Cast to any to allow runtime usage until the table/types are added.
+const db = supabase as any;
+
 export type ProgressRecord = {
   id?: string;
   user_id: string;
@@ -11,7 +15,7 @@ export type ProgressRecord = {
 };
 
 export async function saveProgress(record: Omit<ProgressRecord, 'id'>): Promise<{ data: ProgressRecord | null; error: Error | null }> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('preparation_progress')
     .upsert({
       user_id: record.user_id,
@@ -30,7 +34,7 @@ export async function saveProgress(record: Omit<ProgressRecord, 'id'>): Promise<
 }
 
 export async function getUserProgress(userId: string): Promise<ProgressRecord[]> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('preparation_progress')
     .select('*')
     .eq('user_id', userId)

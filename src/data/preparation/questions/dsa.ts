@@ -1,4 +1,4 @@
-import type { Question } from '../../components/preparation/ProgressiveQuiz';
+import type { Question } from '@/components/preparation/ProgressiveQuiz';
 
 // DSA Arrays Easy Questions
 export const dsaArraysEasy: Question[] = [
