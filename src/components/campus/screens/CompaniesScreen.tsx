@@ -156,10 +156,10 @@ export function CompaniesScreen() {
         </button>
       </div>
 
-      {/* Body */}
-      <div className="px-4 mt-4 space-y-3">
+      {/* Body - 2 Column Grid */}
+      <div className="px-4 mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         {isLoading && (
-          <div className="space-y-3">
+          <div className="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[0, 1, 2, 3].map((i) => (
               <div key={i} className="h-28 rounded-2xl bg-secondary/60 animate-pulse" />
             ))}
@@ -167,7 +167,7 @@ export function CompaniesScreen() {
         )}
 
         {isError && !isLoading && (
-          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
+          <div className="col-span-1 sm:col-span-2 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-semibold text-sm">Couldn't load latest news</p>
@@ -183,7 +183,7 @@ export function CompaniesScreen() {
         )}
 
         {!isLoading && !isError && articles.length === 0 && (
-          <div className="rounded-2xl border border-border bg-card p-6 text-center">
+          <div className="col-span-1 sm:col-span-2 rounded-2xl border border-border bg-card p-6 text-center">
             <Newspaper className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">No fresh stories right now. Pull to refresh in a bit.</p>
           </div>
