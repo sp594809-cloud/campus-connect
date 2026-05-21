@@ -64,20 +64,61 @@ export function DiagnosticQuiz({
     .sort(() => Math.random() - 0.5)
     .slice(0, questionCount);
 
-  // Timer
+  // Timer - ONLY triggers quiz end when time truly runs out, NOT auto-submit
+  // We use refs to avoid stale closure issues
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const stateRef = useRef({ currentIndex, selectedAnswer, showResult, isComplete, timeRemaining, questions: questions.length });
+  
+  // Keep ref updated
   useEffect(() => {
-    if (isComplete || timeRemaining <= 0) return;
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
+    stateRef.current = { currentIndex, selectedAnswer, showResult, isComplete, timeRemaining, questions: questions.length };
+  }, [currentIndex, selectedAnswer, showResult, isComplete, timeRemaining, questions.length]);
+
+  useEffect(() => {
+    if (isComplete || timeRemaining <= 0 || showResult) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+    
+    timerRef.current = setInterval(() => {
+      const state = stateRef.current;
+      
+      if (state.timeRemaining <= 1) {
+        // Time's up
+        if (timerRef.current) clearInterval(timerRef.current);
+        
+        if (state.selectedAnswer !== null) {
+          // Auto-submit current answer if selected
+          const currentQ = questions[state.currentIndex];
+          const attempt: QuizAttempt = {
+            questionId: currentQ.id,
+            selectedAnswer: state.selectedAnswer,
+            isCorrect: state.selectedAnswer === currentQ.correctAnswer,
+            timeTaken: timeLimit,
+          };
+          setAttempts(prev => [...prev, attempt]);
+          
+          // Move to next or finish
+          if (state.currentIndex < state.questions - 1) {
+            setCurrentIndex(state.currentIndex + 1);
+            setSelectedAnswer(null);
+            setShowResult(false);
+          } else {
+            handleFinish();
+          }
+        } else {
           handleFinish();
-          return 0;
         }
-        return prev - 1;
-      });
+        setTimeRemaining(0);
+      } else {
+        setTimeRemaining(state.timeRemaining - 1);
+      }
     }, 1000);
-    return () => clearInterval(timer);
-  }, [isComplete, timeRemaining]);
+    
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []); // Empty deps - we use ref instead
 
   const currentQuestion = questions[currentIndex];
 
