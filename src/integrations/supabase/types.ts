@@ -326,6 +326,53 @@ export type Database = {
           },
         ]
       }
+      daily_tasks: {
+        Row: {
+          created_at: string
+          day_number: number
+          difficulty: string
+          exercise_prompt: string
+          expected_answer_summary: string
+          id: string
+          plan_id: string
+          question: string
+          source_url: string
+          topic_title: string
+        }
+        Insert: {
+          created_at?: string
+          day_number: number
+          difficulty?: string
+          exercise_prompt: string
+          expected_answer_summary?: string
+          id?: string
+          plan_id: string
+          question: string
+          source_url: string
+          topic_title: string
+        }
+        Update: {
+          created_at?: string
+          day_number?: number
+          difficulty?: string
+          exercise_prompt?: string
+          expected_answer_summary?: string
+          id?: string
+          plan_id?: string
+          question?: string
+          source_url?: string
+          topic_title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_tasks_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "user_learning_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dsa_completions: {
         Row: {
           completed_on: string
@@ -713,6 +760,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      learning_tracks: {
+        Row: {
+          branches: string[]
+          category: string
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          is_common: boolean
+          name: string
+          slug: string
+          source_base_url: string
+        }
+        Insert: {
+          branches?: string[]
+          category?: string
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          is_common?: boolean
+          name: string
+          slug: string
+          source_base_url?: string
+        }
+        Update: {
+          branches?: string[]
+          category?: string
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          is_common?: boolean
+          name?: string
+          slug?: string
+          source_base_url?: string
+        }
+        Relationships: []
       }
       marketplace_listings: {
         Row: {
@@ -1452,6 +1538,141 @@ export type Database = {
             columns: ["seller_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_submissions: {
+        Row: {
+          ai_feedback: string
+          ai_hint: string
+          ai_mistakes: string
+          ai_score: number
+          id: string
+          passed: boolean
+          submission_text: string
+          submitted_at: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          ai_feedback?: string
+          ai_hint?: string
+          ai_mistakes?: string
+          ai_score?: number
+          id?: string
+          passed?: boolean
+          submission_text: string
+          submitted_at?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          ai_feedback?: string
+          ai_hint?: string
+          ai_mistakes?: string
+          ai_score?: number
+          id?: string
+          passed?: boolean
+          submission_text?: string
+          submitted_at?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_submissions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "daily_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      track_topics: {
+        Row: {
+          created_at: string
+          id: string
+          level: string
+          order_index: number
+          slug: string
+          source_url: string
+          title: string
+          track_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level: string
+          order_index?: number
+          slug: string
+          source_url: string
+          title: string
+          track_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: string
+          order_index?: number
+          slug?: string
+          source_url?: string
+          title?: string
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_topics_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "learning_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_learning_plans: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          current_day: number
+          id: string
+          level: string
+          pace_days: number
+          started_at: string
+          status: string
+          track_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          current_day?: number
+          id?: string
+          level: string
+          pace_days: number
+          started_at?: string
+          status?: string
+          track_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          current_day?: number
+          id?: string
+          level?: string
+          pace_days?: number
+          started_at?: string
+          status?: string
+          track_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_learning_plans_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "learning_tracks"
             referencedColumns: ["id"]
           },
         ]
