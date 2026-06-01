@@ -1,106 +1,99 @@
-import { useNavigate } from 'react-router-dom';
-import { Building2, ArrowRight } from 'lucide-react';
+import { useState } from 'react';
+import { ExternalLink, AlertTriangle } from 'lucide-react';
 import type { CompanyNews } from '@/integrations/external/types';
 import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface CompanyNewsCardProps {
   news: CompanyNews;
   className?: string;
 }
 
-// Simulated live status based on content
-const getUrgencyStatus = () => {
-  const hours = Math.floor(Math.random() * 12);
-  if (hours < 1) {
-    return `🟢 ${Math.floor(Math.random() * 60)} mins ago`;
-  } else if (hours < 24) {
-    return `🟢 ${hours} hours ago`;
-  } else {
-    return `🟢 ${Math.floor(hours / 24)} days ago`;
-  }
-};
+function sourceHost(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
 
-// Get company emoji/symbol
-const getCompanySymbol = (name: string) => {
-  const lowerName = name?.toLowerCase() || '';
-  if (lowerName.includes('google')) return '🔍';
-  if (lowerName.includes('microsoft')) return '💠';
-  if (lowerName.includes('amazon')) return '📦';
-  if (lowerName.includes('apple')) return '🍎';
-  if (lowerName.includes('meta')) return '📘';
-  if (lowerName.includes('tesla')) return '⚡';
-  if (lowerName.includes('goldman')) return '💰';
-  if (lowerName.includes('netflix')) return '🎬';
-  return '🏢';
-};
+function faviconFor(url: string): string {
+  const host = sourceHost(url);
+  return host ? `https://www.google.com/s2/favicons?sz=64&domain=${host}` : '';
+}
 
 export function CompanyNewsCard({ news, className = '' }: CompanyNewsCardProps) {
-  const navigate = useNavigate();
-  const timeAgo = formatDistanceToNow(new Date(news.publishedAt), { addSuffix: true });
-  const statusColor = 'text-green-500'; // Default to green for live
-  
-  // Parse urgency from title
-  const isUrgent = news.title?.toLowerCase().includes('deadline') || 
-    news.title?.toLowerCase().includes('closing') ||
-    news.title?.toLowerCase().includes('ends');
+  const [imgOk, setImgOk] = useState(Boolean(news.imageUrl));
+  const [faviconOk, setFaviconOk] = useState(true);
+  const host = sourceHost(news.url);
+  let timeAgo = '';
+  try { timeAgo = formatDistanceToNow(new Date(news.publishedAt), { addSuffix: true }); } catch {}
+
+  const isUrgent = /deadline|closing|ends|last\s+date/i.test(news.title || '');
 
   return (
-    <article className={`group relative ${className}`}>
-      {/* Glassmorphic card - using design tokens */}
-      <div className="relative backdrop-blur-xl bg-glass-card border border-white/20 rounded-lg p-3 hover:bg-white/15 transition-all duration-200 shadow-soft hover:shadow-glow">
-        {/* Top row: Logo + Status */}
-        <div className="flex items-start justify-between gap-3 mb-2">
-          {/* Company Logo with gradient frame */}
-          <div className="relative flex-shrink-0">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#1a1a2e] to-purple-600" />
-            <div className="relative h-10 w-10 rounded-full border-2 border-white/60 flex items-center justify-center overflow-hidden bg-[#1a1a2e]">
-              <span className="text-lg">{getCompanySymbol(news.companyName)}</span>
-            </div>
-          </div>
+    <a
+      href={news.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        'group block rounded-2xl bg-card border border-border overflow-hidden shadow-card hover:shadow-pop hover:-translate-y-0.5 transition-smooth press-scale',
+        className,
+      )}
+    >
+      {imgOk && news.imageUrl && (
+        <div className="aspect-video w-full bg-muted overflow-hidden">
+          <img
+            src={news.imageUrl}
+            alt=""
+            loading="lazy"
+            onError={() => setImgOk(false)}
+            className="h-full w-full object-cover group-hover:scale-[1.03] transition-smooth"
+          />
+        </div>
+      )}
 
-          {/* Live Status Indicator */}
-          <div className="flex items-center gap-1.5 text-xs font-medium">
-            <span className="relative flex h-2 w-2">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isUrgent ? 'bg-red-500' : 'bg-green-500'} opacity-75`} />
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${isUrgent ? 'bg-red-500' : 'bg-green-500'}`} />
+      <div className="p-4 space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {faviconOk && host ? (
+              <img
+                src={faviconFor(news.url)}
+                alt=""
+                onError={() => setFaviconOk(false)}
+                className="h-4 w-4 rounded-sm"
+              />
+            ) : (
+              <span className="h-4 w-4 rounded-sm bg-secondary" aria-hidden />
+            )}
+            <span className="text-xs font-semibold text-muted-foreground truncate">
+              {news.source || host || news.companyName}
             </span>
-            <span className={isUrgent ? 'text-red-500' : statusColor}>{timeAgo}</span>
           </div>
+          <span className="text-[11px] text-muted-foreground whitespace-nowrap tabular-nums">{timeAgo}</span>
         </div>
 
-        {/* Content: Headline + Summary */}
-        <div className="space-y-1">
-          <p className="text-sm text-muted-foreground font-medium truncate">
-            {news.companyName}
-          </p>
-          <h3 className="font-semibold text-sm leading-snug line-clamp-2 group-hover:text-purple-400 transition-colors">
-            {news.title}
-          </h3>
-          {news.description && (
-            <p className="text-xs text-muted-foreground/80 line-clamp-2">
-              {news.description}
-            </p>
+        <h3 className="font-semibold text-[15px] leading-snug text-foreground line-clamp-2 group-hover:text-accent transition-smooth">
+          {news.title}
+        </h3>
+
+        {news.description && (
+          <p className="text-xs text-muted-foreground line-clamp-2">{news.description}</p>
+        )}
+
+        <div className="flex items-center justify-between pt-1">
+          {isUrgent ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-destructive/10 text-destructive border border-destructive/30">
+              <AlertTriangle className="h-3 w-3" /> Time-sensitive
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-accent-soft text-accent">
+              {news.companyName}
+            </span>
           )}
-        </div>
-
-        {/* Bottom: Divider + Metadata */}
-        <div className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between">
-          {/* Tag Badge */}
-          <div className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
-            🎓 Eligibility: 7+ CGPA
-          </div>
-
-          {/* View Details Button */}
-          <button
-            onClick={() => navigate(`/companies/${encodeURIComponent(news.companyName || '')}`, { replace: true })}
-            className="inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-semibold bg-gradient-to-r from-[#1a1a2e] to-purple-600 text-white hover:from-purple-600 hover:to-[#1a1a2e] transition-all duration-200"
-          >
-            View Details
-            <ArrowRight className="h-3 w-3" />
-          </button>
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-smooth">
+            Open
+            <ExternalLink className="h-3 w-3" />
+          </span>
         </div>
       </div>
-    </article>
+    </a>
   );
 }
 

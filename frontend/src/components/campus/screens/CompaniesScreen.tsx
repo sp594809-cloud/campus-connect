@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Newspaper, Sparkles, RefreshCw, ExternalLink, Filter, Loader2, AlertCircle, Clock, Building2 } from "lucide-react";
+import { Newspaper, Sparkles, RefreshCw, ExternalLink, Filter, AlertCircle, Clock, Building2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -78,48 +78,65 @@ export function CompaniesScreen() {
   }, [data, filter]);
 
   const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
+  const branchArticles = data?.branchArticles ?? [];
 
   return (
-    <div className="space-y-4 pb-20">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-primary" />
-          Companies
+    <div className="space-y-5 pb-24 bg-gradient-subtle">
+      {/* Hero header */}
+      <header className="px-4 pt-4 space-y-1.5">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-70" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+          </span>
+          Live market pulse
+        </div>
+        <h1 className="text-[26px] leading-tight font-bold tracking-tight">
+          {branchLabel} <span className="text-gradient-hero">News</span>
         </h1>
         <p className="text-sm text-muted-foreground">
-          Real-time recruitment intelligence terminal
+          Updates tailored to your branch · AI insights for everyone
         </p>
-      </div>
+      </header>
 
       {/* Search */}
-      <CompanySearch
-        onSelect={handleCompanySelect}
-        placeholder="Search companies..."
-      />
-
-      {/* Live Status Ticker Tape */}
-      <div className="sticky top-0 z-10 backdrop-blur-xl bg-glass-card border border-white/10 rounded-lg overflow-hidden shadow-soft">
-        <div className="flex items-center gap-3 px-3 py-2 overflow-x-auto">
-          {/* Pulsing dots */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
-            </span>
-            Live market pulse
-          </div>
-          <h1 className="mt-2 text-2xl font-bold leading-tight">
-            {branchLabel} <span className="opacity-80">News</span>
-          </h1>
-          <p className="mt-1 text-sm opacity-80">
-            Trending updates tailored to your branch · AI insights for everyone
-          </p>
-        </div>
+      <div className="px-4">
+        <CompanySearch onSelect={handleCompanySelect} placeholder="Search companies..." />
       </div>
 
+      {/* For-your-branch rail */}
+      <section className="space-y-2">
+        <div className="px-4 flex items-center justify-between">
+          <h2 className="text-sm font-bold flex items-center gap-1.5">
+            <Building2 className="h-4 w-4 text-accent" />
+            For your branch
+          </h2>
+          {lastUpdated && (
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              {formatDistanceToNow(lastUpdated, { addSuffix: true })}
+            </span>
+          )}
+        </div>
+        <div className="overflow-x-auto scrollbar-hide snap-x snap-mandatory">
+          <div className="flex gap-3 px-4 pb-1">
+            {isLoading && [0, 1, 2].map((i) => (
+              <div key={i} className="h-32 w-64 shrink-0 rounded-2xl bg-secondary/60 animate-pulse" />
+            ))}
+            {!isLoading && branchArticles.slice(0, 8).map((a) => (
+              <RailCard key={a.id} article={a} />
+            ))}
+            {!isLoading && branchArticles.length === 0 && !isError && (
+              <div className="h-32 w-full rounded-2xl border border-dashed border-border bg-card/60 flex items-center justify-center text-xs text-muted-foreground">
+                No branch updates yet
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* Controls */}
-      <div className="px-4 mt-4 flex items-center gap-2">
+      <div className="px-4 flex items-center gap-2">
         <div className="flex items-center gap-1 rounded-full bg-secondary p-1 text-xs font-semibold">
           {([
             { k: "all", label: "All" },
@@ -130,7 +147,7 @@ export function CompaniesScreen() {
               key={t.k}
               onClick={() => setFilter(t.k as FilterKey)}
               className={cn(
-                "px-3 py-1.5 rounded-full transition-smooth",
+                "px-3 py-1.5 rounded-full transition-smooth press-scale",
                 filter === t.k
                   ? "bg-primary text-primary-foreground shadow-soft"
                   : "text-secondary-foreground hover:bg-background/60",
@@ -141,33 +158,23 @@ export function CompaniesScreen() {
           ))}
         </div>
         <div className="flex-1" />
-        {lastUpdated && (
-          <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            {formatDistanceToNow(lastUpdated, { addSuffix: true })}
-          </span>
-        )}
         <button
           onClick={() => refetch()}
-          aria-label="Refresh"
-          className="h-9 w-9 inline-flex items-center justify-center rounded-full bg-card border border-border hover:bg-secondary transition-smooth"
+          aria-label="Refresh news"
+          className="h-9 w-9 inline-flex items-center justify-center rounded-full bg-card border border-border hover:bg-secondary transition-smooth press-scale shadow-card"
         >
           <RefreshCw className={cn("h-4 w-4 text-foreground", isFetching && "animate-spin")} />
         </button>
       </div>
 
-      {/* Body - 2 Column Grid */}
-      <div className="px-4 mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {isLoading && (
-          <div className="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-28 rounded-2xl bg-secondary/60 animate-pulse" />
-            ))}
-          </div>
-        )}
+      {/* Feed */}
+      <div className="px-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {isLoading && [0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-36 rounded-2xl bg-secondary/60 animate-pulse" />
+        ))}
 
         {isError && !isLoading && (
-          <div className="col-span-1 sm:col-span-2 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
+          <div className="col-span-full rounded-2xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-semibold text-sm">Couldn't load latest news</p>
@@ -183,7 +190,7 @@ export function CompaniesScreen() {
         )}
 
         {!isLoading && !isError && articles.length === 0 && (
-          <div className="col-span-1 sm:col-span-2 rounded-2xl border border-border bg-card p-6 text-center">
+          <div className="col-span-full rounded-2xl border border-dashed border-border bg-card p-6 text-center">
             <Newspaper className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">No fresh stories right now. Pull to refresh in a bit.</p>
           </div>
@@ -195,21 +202,36 @@ export function CompaniesScreen() {
   );
 }
 
+function RailCard({ article }: { article: Article }) {
+  let timeAgo = "";
+  try { timeAgo = formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true }); } catch {}
+  return (
+    <a
+      href={article.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="snap-start shrink-0 w-64 h-32 rounded-2xl p-3 bg-gradient-hero text-primary-foreground shadow-card hover:shadow-pop press-scale transition-smooth flex flex-col justify-between"
+    >
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider opacity-90">
+        <Sparkles className="h-3 w-3" /> {article.source || 'Update'}
+      </div>
+      <h3 className="text-sm font-semibold leading-snug line-clamp-3">{article.title}</h3>
+      <span className="text-[10px] opacity-80">{timeAgo}</span>
+    </a>
+  );
+}
+
 function NewsCard({ article }: { article: Article }) {
   const isAI = article.category === "ai";
   let timeAgo = "";
-  try {
-    timeAgo = formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true });
-  } catch {
-    timeAgo = "";
-  }
+  try { timeAgo = formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true }); } catch {}
 
   return (
     <a
       href={article.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group block rounded-2xl bg-card border border-border p-4 shadow-soft hover:shadow-elevated hover:-translate-y-0.5 transition-smooth"
+      className="group block rounded-2xl bg-card border border-border p-4 shadow-card hover:shadow-pop hover:-translate-y-0.5 transition-smooth press-scale"
     >
       <div className="flex items-center justify-between gap-2 mb-2">
         <span
