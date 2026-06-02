@@ -1,24 +1,16 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, ArrowRight } from 'lucide-react';
+import { Building2, ArrowRight, Bookmark, Share2, ExternalLink } from 'lucide-react';
 import type { CompanyNews } from '@/integrations/external/types';
 import { formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
 
 interface CompanyNewsCardProps {
   news: CompanyNews;
   className?: string;
+  isBookmarked?: boolean;
+  onToggleBookmark?: () => void;
 }
-
-// Simulated live status based on content
-const getUrgencyStatus = () => {
-  const hours = Math.floor(Math.random() * 12);
-  if (hours < 1) {
-    return `🟢 ${Math.floor(Math.random() * 60)} mins ago`;
-  } else if (hours < 24) {
-    return `🟢 ${hours} hours ago`;
-  } else {
-    return `🟢 ${Math.floor(hours / 24)} days ago`;
-  }
-};
 
 // Get company emoji/symbol
 const getCompanySymbol = (name: string) => {
@@ -34,70 +26,157 @@ const getCompanySymbol = (name: string) => {
   return '🏢';
 };
 
-export function CompanyNewsCard({ news, className = '' }: CompanyNewsCardProps) {
+export function CompanyNewsCard({ news, className = '', isBookmarked: propBookmarked, onToggleBookmark }: CompanyNewsCardProps) {
   const navigate = useNavigate();
-  const timeAgo = formatDistanceToNow(new Date(news.publishedAt), { addSuffix: true });
-  const statusColor = 'text-green-500'; // Default to green for live
+  const [localBookmarked, setLocalBookmarked] = useState(false);
   
+  // Connect to prop or fall back to local storage
+  const isBookmarked = propBookmarked !== undefined ? propBookmarked : localBookmarked;
+
+  useEffect(() => {
+    if (propBookmarked === undefined) {
+      const saved = localStorage.getItem(`bookmark_news_${news.id}`);
+      setLocalBookmarked(!!saved);
+    }
+  }, [news.id, propBookmarked]);
+
+  const handleBookmark = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (onToggleBookmark) {
+      onToggleBookmark();
+    } else {
+      const nextState = !localBookmarked;
+      setLocalBookmarked(nextState);
+      if (nextState) {
+        localStorage.setItem(`bookmark_news_${news.id}`, JSON.stringify(news));
+        toast.success(`Bookmarked article: "${news.title.substring(0, 30)}..."`);
+      } else {
+        localStorage.removeItem(`bookmark_news_${news.id}`);
+        toast.info('Removed from bookmarks');
+      }
+    }
+  };
+
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const shareUrl = news.url || window.location.href;
+    navigator.clipboard.writeText(shareUrl);
+    toast.success('Link copied to clipboard! 🚀', {
+      description: 'You can now share this recruitment intel with others.',
+    });
+  };
+
+  let timeAgo = '';
+  try {
+    timeAgo = formatDistanceToNow(new Date(news.publishedAt), { addSuffix: true });
+  } catch {
+    timeAgo = 'recently';
+  }
+
   // Parse urgency from title
   const isUrgent = news.title?.toLowerCase().includes('deadline') || 
     news.title?.toLowerCase().includes('closing') ||
-    news.title?.toLowerCase().includes('ends');
+    news.title?.toLowerCase().includes('ends') ||
+    news.title?.toLowerCase().includes('apply');
 
   return (
-    <article className={`group relative ${className}`}>
-      {/* Glassmorphic card - using design tokens */}
-      <div className="relative backdrop-blur-xl bg-glass-card border border-white/20 rounded-lg p-3 hover:bg-white/15 transition-all duration-200 shadow-soft hover:shadow-glow">
-        {/* Top row: Logo + Status */}
-        <div className="flex items-start justify-between gap-3 mb-2">
-          {/* Company Logo with gradient frame */}
-          <div className="relative flex-shrink-0">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#1a1a2e] to-purple-600" />
-            <div className="relative h-10 w-10 rounded-full border-2 border-white/60 flex items-center justify-center overflow-hidden bg-[#1a1a2e]">
-              <span className="text-lg">{getCompanySymbol(news.companyName)}</span>
+    <article className={`group relative transition-smooth ${className}`}>
+      {/* Glow highlight behind card on hover */}
+      <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-primary/30 to-accent/30 opacity-0 group-hover:opacity-100 blur-sm transition duration-500" />
+      
+      {/* Premium Glassmorphic card */}
+      <div className="relative glass-card hover:bg-card/85 rounded-2xl p-5 hover:shadow-glow transition-smooth border border-border/60">
+        
+        {/* Top row: Logo + Status + Bookmark & Share */}
+        <div className="flex items-center justify-between gap-3 mb-3.5">
+          <div className="flex items-center gap-3">
+            {/* Company Logo with beautiful gradient border */}
+            <div className="relative flex-shrink-0 h-10 w-10 rounded-xl bg-gradient-to-br from-primary via-purple-900 to-accent p-[1.5px] shadow-sm">
+              <div className="h-full w-full rounded-[10px] flex items-center justify-center bg-card text-lg">
+                <span>{getCompanySymbol(news.companyName)}</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[13px] text-muted-foreground font-semibold uppercase tracking-wider">
+                {news.companyName}
+              </p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="relative flex h-2 w-2">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isUrgent ? 'bg-destructive' : 'bg-success'} opacity-75`} />
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isUrgent ? 'bg-destructive' : 'bg-success'}`} />
+                </span>
+                <span className={`text-[11px] font-semibold ${isUrgent ? 'text-destructive' : 'text-success'}`}>
+                  {isUrgent ? 'URGENT ALERT' : 'LIVE FEED'}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Live Status Indicator */}
-          <div className="flex items-center gap-1.5 text-xs font-medium">
-            <span className="relative flex h-2 w-2">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isUrgent ? 'bg-red-500' : 'bg-green-500'} opacity-75`} />
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${isUrgent ? 'bg-red-500' : 'bg-green-500'}`} />
-            </span>
-            <span className={isUrgent ? 'text-red-500' : statusColor}>{timeAgo}</span>
+          {/* Action buttons */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleShare}
+              title="Share Link"
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-smooth"
+            >
+              <Share2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={handleBookmark}
+              title={isBookmarked ? 'Remove Bookmark' : 'Bookmark Article'}
+              className={`h-8 w-8 rounded-lg flex items-center justify-center transition-smooth ${
+                isBookmarked 
+                  ? 'text-accent bg-accent-soft/80' 
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/80'
+              }`}
+            >
+              <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-accent' : ''}`} />
+            </button>
           </div>
         </div>
 
         {/* Content: Headline + Summary */}
-        <div className="space-y-1">
-          <p className="text-sm text-muted-foreground font-medium truncate">
-            {news.companyName}
-          </p>
-          <h3 className="font-semibold text-sm leading-snug line-clamp-2 group-hover:text-purple-400 transition-colors">
+        <div className="space-y-2 cursor-pointer" onClick={() => navigate(`/companies/${encodeURIComponent(news.companyName || '')}`, { replace: true })}>
+          <h3 className="font-bold text-base leading-snug text-foreground group-hover:text-accent transition-smooth line-clamp-2">
             {news.title}
           </h3>
           {news.description && (
-            <p className="text-xs text-muted-foreground/80 line-clamp-2">
+            <p className="text-sm text-muted-foreground/80 line-clamp-2 leading-relaxed">
               {news.description}
             </p>
           )}
         </div>
 
         {/* Bottom: Divider + Metadata */}
-        <div className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between">
-          {/* Tag Badge */}
-          <div className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
-            🎓 Eligibility: 7+ CGPA
+        <div className="mt-4 pt-3.5 border-t border-border/50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {/* Tag Badge */}
+            <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-warning/10 text-warning border border-warning/20">
+              🎓 Eligibility: 7+ CGPA
+            </div>
+            
+            {news.source && (
+              <span className="hidden sm:inline text-xs text-muted-foreground font-medium">
+                via {news.source}
+              </span>
+            )}
           </div>
 
-          {/* View Details Button */}
-          <button
-            onClick={() => navigate(`/companies/${encodeURIComponent(news.companyName || '')}`, { replace: true })}
-            className="inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-semibold bg-gradient-to-r from-[#1a1a2e] to-purple-600 text-white hover:from-purple-600 hover:to-[#1a1a2e] transition-all duration-200"
-          >
-            View Details
-            <ArrowRight className="h-3 w-3" />
-          </button>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground font-medium">
+              {timeAgo}
+            </span>
+            <button
+              onClick={() => navigate(`/companies/${encodeURIComponent(news.companyName || '')}`, { replace: true })}
+              className="inline-flex items-center gap-1 text-xs font-bold text-accent group-hover:translate-x-0.5 transition-smooth"
+            >
+              Details
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
     </article>
