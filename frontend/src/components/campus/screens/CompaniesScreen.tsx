@@ -83,66 +83,93 @@ export function CompaniesScreen() {
 
   return (
     <div className="pb-24 bg-gradient-subtle min-h-full">
-      {/* Hero header — aligned with app's editorial style */}
-      <header className="px-4 pt-5 pb-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-card border border-border shadow-card text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-70" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
-            </span>
-            <Radio className="h-3 w-3" />
-            Live pulse
-          </div>
-          <button
-            onClick={() => refetch()}
-            aria-label="Refresh news"
-            className="h-9 w-9 inline-flex items-center justify-center rounded-full bg-card border border-border hover:bg-secondary transition-smooth press-scale shadow-card"
-          >
-            <RefreshCw className={cn("h-4 w-4 text-foreground", isFetching && "animate-spin")} />
-          </button>
-        </div>
-        <div>
-          <h1 className="text-[28px] leading-[1.1] font-bold tracking-tight">
-            {branchLabel} <span className="text-gradient-hero">News</span>
-          </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Curated stories for your branch · AI signals for everyone
-          </p>
-        </div>
+      {/* Hero header — editorial, layered, premium */}
+      <header className="relative px-4 pt-6 pb-5 overflow-hidden">
+        {/* Ambient glow */}
+        <div
+          className="absolute inset-x-0 -top-16 h-48 opacity-60 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(60% 80% at 15% 30%, hsl(var(--accent) / 0.18), transparent 60%), radial-gradient(50% 70% at 90% 10%, hsl(var(--primary) / 0.18), transparent 60%)",
+          }}
+          aria-hidden
+        />
 
-        <CompanySearch onSelect={handleCompanySelect} placeholder="Search companies..." />
-      </header>
-
-      {/* Filter chips + last-updated */}
-      <div className="px-4 pb-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1 rounded-full bg-secondary p-1 text-xs font-semibold">
-          {([
-            { k: "all", label: "All" },
-            { k: "branch", label: branch },
-            { k: "ai", label: "AI" },
-          ] as const).map((t) => (
+        <div className="relative space-y-4">
+          {/* Meta strip: live pill + refresh */}
+          <div className="flex items-center justify-between">
+            <div className="inline-flex items-center gap-2 pl-2 pr-3 py-1 rounded-full bg-card/80 backdrop-blur border border-border shadow-card">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-70" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                Live · {branch}
+              </span>
+            </div>
             <button
-              key={t.k}
-              onClick={() => setFilter(t.k as FilterKey)}
-              className={cn(
-                "px-3 py-1.5 rounded-full transition-smooth press-scale",
-                filter === t.k
-                  ? "bg-primary text-primary-foreground shadow-soft"
-                  : "text-secondary-foreground hover:bg-background/60",
-              )}
+              onClick={() => refetch()}
+              aria-label="Refresh news"
+              className="group inline-flex items-center gap-1.5 h-9 pl-2.5 pr-3 rounded-full bg-card/80 backdrop-blur border border-border hover:bg-secondary hover:border-border-strong transition-smooth press-scale shadow-card"
             >
-              {t.label}
+              <RefreshCw className={cn("h-3.5 w-3.5 text-foreground transition-smooth", isFetching && "animate-spin")} />
+              <span className="text-[11px] font-semibold text-foreground">
+                {isFetching ? "Syncing" : "Refresh"}
+              </span>
             </button>
-          ))}
+          </div>
+
+          {/* Title block */}
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-accent">
+              <Newspaper className="h-3 w-3" />
+              Daily briefing
+            </div>
+            <h1 className="text-[30px] leading-[1.05] font-bold tracking-tight">
+              {branchLabel}
+              <br />
+              <span className="text-gradient-hero">News & Signals</span>
+            </h1>
+            <p className="text-[13px] text-muted-foreground leading-relaxed max-w-[34ch]">
+              Curated by your branch. Powered by AI.
+              {lastUpdated && (
+                <>
+                  {" · "}
+                  <span className="inline-flex items-center gap-1 tabular-nums">
+                    <Clock className="h-3 w-3" />
+                    {formatDistanceToNow(lastUpdated, { addSuffix: true })}
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
+
+          <CompanySearch onSelect={handleCompanySelect} placeholder="Search companies..." />
+
+          {/* Segmented filter */}
+          <div className="flex items-center gap-1 rounded-full bg-secondary/80 backdrop-blur p-1 text-xs font-semibold border border-border/60 shadow-card w-fit">
+            {([
+              { k: "all", label: "All", icon: null },
+              { k: "branch", label: branch, icon: <TrendingUp className="h-3 w-3" /> },
+              { k: "ai", label: "AI", icon: <Sparkles className="h-3 w-3" /> },
+            ] as const).map((t) => (
+              <button
+                key={t.k}
+                onClick={() => setFilter(t.k as FilterKey)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-smooth press-scale",
+                  filter === t.k
+                    ? "bg-primary text-primary-foreground shadow-soft"
+                    : "text-secondary-foreground hover:text-foreground",
+                )}
+              >
+                {t.icon}
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
-        {lastUpdated && (
-          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
-            <Clock className="h-3 w-3" />
-            {formatDistanceToNow(lastUpdated, { addSuffix: true })}
-          </span>
-        )}
-      </div>
+      </header>
 
       {/* Featured story */}
       {!isLoading && featured && (
