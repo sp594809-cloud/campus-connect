@@ -36,11 +36,13 @@ const RecruiterStudentDetail = () => {
     (async () => {
       setLoading(true);
       const { data: p } = await supabase.from("profiles")
-        .select("id,name,username,avatar_url,branch,year,college_name,graduation_year,placement_status,company,karma_total,verified,resume_url,bio,skills")
+        .select("id,name,username,avatar_url,branch,year,college_name,graduation_year,placement_status,company,karma_total,verified,resume_url,bio,skills,recruiter_visible")
         .eq("id", id).maybeSingle();
-      if (p) {
+      if (p && (p as unknown as { recruiter_visible?: boolean }).recruiter_visible) {
         setProfile(p as unknown as PassportProfile);
         setData(await fetchPassportData(p.id));
+      } else {
+        setProfile(null);
       }
       setLoading(false);
     })();
