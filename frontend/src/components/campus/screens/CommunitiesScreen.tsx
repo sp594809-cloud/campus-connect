@@ -10,6 +10,8 @@ import { uploadAttachment, detectKind } from "@/lib/uploads";
 import { formatDistanceToNow } from "date-fns";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { fetchProfilesByIds, type MiniProfile } from "@/lib/api/profiles";
+import { CodeOfConductDialog } from "@/components/community/CodeOfConductDialog";
+import { moderate } from "@/lib/moderation";
 
 interface Community {
   id: string;
@@ -45,6 +47,7 @@ export const CommunitiesScreen = () => {
   const [activeChat, setActiveChat] = useState<Community | null>(null);
   const [confirmDel, setConfirmDel] = useState<Community | null>(null);
   const [working, setWorking] = useState(false);
+  const [cocFor, setCocFor] = useState<Community | null>(null);
 
   const load = async () => {
     const { data: comms } = await supabase.from("communities").select("*").order("name");
@@ -84,18 +87,47 @@ export const CommunitiesScreen = () => {
     load();
   };
 
+  const performJoin = async (c: Community) => {
+    if (!user) return;
+    setJoined((p) => ({ ...p, [c.id]: true }));
+    setCommunities((prev) => prev.map((x) => x.id === c.id ? { ...x, member_count: x.member_count + 1 } : x));
+    const { error } = await supabase.from("community_members").insert({ community_id: c.id, user_id: user.id });
+    if (error) {
+      setJoined((p) => ({ ...p, [c.id]: false }));
+      setCommunities((prev) => prev.map((x) => x.id === c.id ? { ...x, member_count: x.member_count - 1 } : x));
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`Joined ${c.name}!`);
+  };
+
   const toggle = async (c: Community) => {
     if (!user) return;
     const isJoined = joined[c.id];
-    setJoined((p) => ({ ...p, [c.id]: !isJoined }));
-    setCommunities((prev) => prev.map((x) => x.id === c.id ? { ...x, member_count: x.member_count + (isJoined ? -1 : 1) } : x));
     if (isJoined) {
+      setJoined((p) => ({ ...p, [c.id]: false }));
+      setCommunities((prev) => prev.map((x) => x.id === c.id ? { ...x, member_count: x.member_count - 1 } : x));
       await supabase.from("community_members").delete().eq("community_id", c.id).eq("user_id", user.id);
       toast.success(`Left ${c.name}`);
-    } else {
-      await supabase.from("community_members").insert({ community_id: c.id, user_id: user.id });
-      toast.success(`Joined ${c.name}!`);
+      return;
     }
+    // Joining: gate on Code of Conduct acceptance.
+    const { data: acc } = await supabase
+      .from("community_coc_acceptances")
+      .select("version")
+      .eq("community_id", c.id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const { data: coc } = await supabase
+      .from("community_code_of_conduct")
+      .select("version")
+      .eq("community_id", c.id)
+      .maybeSingle();
+    if (!acc || (coc?.version ?? 1) > (acc?.version ?? 0)) {
+      setCocFor(c);
+      return;
+    }
+    await performJoin(c);
   };
 
   const deleteCommunity = async () => {
@@ -202,6 +234,20 @@ export const CommunitiesScreen = () => {
         onCancel={() => setConfirmDel(null)}
         onConfirm={deleteCommunity}
       />
+
+      {cocFor && (
+        <CodeOfConductDialog
+          communityId={cocFor.id}
+          communityName={cocFor.name}
+          open={!!cocFor}
+          onClose={() => setCocFor(null)}
+          onAccepted={async () => {
+            const c = cocFor;
+            setCocFor(null);
+            if (c) await performJoin(c);
+          }}
+        />
+      )}
     </div>
   );
 };
