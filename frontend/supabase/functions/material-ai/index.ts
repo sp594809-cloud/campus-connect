@@ -56,11 +56,6 @@ Deno.serve(async (req) => {
     const access = await assertUnlocked(supa, materialId, user.id);
     if ("error" in access) return json({ error: access.error }, access.status);
 
-    if (action === "prepare") {
-      const text = await ensureMaterialContent(supa, materialId);
-      return json({ ok: true, chars: text.length });
-    }
-
     if (action === "quiz") {
       const text = await ensureMaterialContent(supa, materialId);
       if (!text || text.trim().length < 50) {
