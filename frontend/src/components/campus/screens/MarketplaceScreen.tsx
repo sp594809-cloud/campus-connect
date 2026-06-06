@@ -71,6 +71,7 @@ export const MarketplaceScreen = () => {
   const pdfRef = useRef<HTMLInputElement>(null);
   const [confirmDel, setConfirmDel] = useState<Listing | null>(null);
   const [working, setWorking] = useState(false);
+  const [reportListing, setReportListing] = useState<Listing | null>(null);
 
   // Field-level error state for inline contextual error handling.
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
