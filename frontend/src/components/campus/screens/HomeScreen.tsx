@@ -475,6 +475,14 @@ export const HomeScreen = () => {
         onConfirm={deletePost}
       />
 
+      <ReportSheet
+        open={!!reportPost}
+        onClose={() => setReportPost(null)}
+        contentType="post"
+        contentId={reportPost?.id ?? ""}
+        reportedUserId={reportPost?.author_id ?? null}
+      />
+
       {editing && (
         <div className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-fade-in-up" onClick={() => setEditing(null)}>
           <div className="glass-card rounded-3xl p-5 w-full max-w-md shadow-elevated animate-scale-in" onClick={(e) => e.stopPropagation()}>
