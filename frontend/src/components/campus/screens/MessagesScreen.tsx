@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Flag, Send, Sparkles, Paperclip, FileText, Check, CheckCheck, X } from "lucide-react";
+import { ArrowLeft, Flag, Send, Sparkles, Paperclip, FileText, Check, CheckCheck, X, Ban, Trash2, MoreVertical } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,6 +41,16 @@ export const MessagesScreen = ({ openWith, onClearOpen }: { openWith: string | n
 
   const loadConversations = async () => {
     if (!user) return;
+    // load my block list (either direction)
+    const { data: blocks } = await supabase
+      .from("user_blocks")
+      .select("blocker_id, blocked_id")
+      .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
+    const blockedSet = new Set<string>(
+      (blocks ?? []).map((b: { blocker_id: string; blocked_id: string }) =>
+        b.blocker_id === user.id ? b.blocked_id : b.blocker_id
+      )
+    );
     const { data: convs, error: cErr } = await supabase
       .from("conversations")
       .select("id, user_a, user_b, last_message_at")
@@ -49,7 +59,12 @@ export const MessagesScreen = ({ openWith, onClearOpen }: { openWith: string | n
     if (cErr) { toast.error(cErr.message); setLoading(false); return; }
     if (!convs?.length) { setConversations([]); setLoading(false); return; }
 
-    const otherIds = convs.map((c) => c.user_a === user.id ? c.user_b : c.user_a);
+    const visibleConvs = convs.filter((c) => {
+      const otherId = c.user_a === user.id ? c.user_b : c.user_a;
+      return !blockedSet.has(otherId);
+    });
+    if (!visibleConvs.length) { setConversations([]); setLoading(false); return; }
+    const otherIds = visibleConvs.map((c) => c.user_a === user.id ? c.user_b : c.user_a);
     const profs = await fetchPublicProfilesByIds(otherIds).catch((err) => {
       console.error("[Messages] profiles", err); return [] as PublicProfile[];
     });
@@ -58,7 +73,7 @@ export const MessagesScreen = ({ openWith, onClearOpen }: { openWith: string | n
     const { data: lastMsgs } = await supabase
       .from("messages")
       .select("conversation_id, content, sender_id, read, created_at, attachment_type")
-      .in("conversation_id", convs.map((c) => c.id))
+      .in("conversation_id", visibleConvs.map((c) => c.id))
       .order("created_at", { ascending: false });
     const lastByConv = new Map<string, { content: string; sender_id: string }>();
     const unreadByConv = new Map<string, number>();
@@ -70,7 +85,7 @@ export const MessagesScreen = ({ openWith, onClearOpen }: { openWith: string | n
       if (!m.read && m.sender_id !== user.id) unreadByConv.set(m.conversation_id, (unreadByConv.get(m.conversation_id) ?? 0) + 1);
     });
 
-    setConversations(convs.map((c) => {
+    setConversations(visibleConvs.map((c) => {
       const otherId = c.user_a === user.id ? c.user_b : c.user_a;
       const last = lastByConv.get(c.id);
       return {
