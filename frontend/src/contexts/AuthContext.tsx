@@ -31,6 +31,9 @@ export interface Profile {
   discoverable?: boolean;
   profile_visibility?: "public" | "connections" | "private";
   views_incognito?: boolean;
+  consent_acknowledged?: boolean;
+  consent_acknowledged_at?: string | null;
+  recruiter_visible?: boolean;
 }
 
 interface AuthCtx {
@@ -111,9 +114,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { data: banned } = await supabase.rpc("has_active_ban", { _uid: uid });
       if (banned === true && typeof window !== "undefined" && !window.location.pathname.startsWith("/banned")) {
         window.location.replace("/banned");
+        return;
       }
     } catch (e) {
       console.error("[ban-check]", e);
+    }
+
+    // Consent gate: if the user has finished onboarding but hasn't acknowledged
+    // the accountable-identity notice, force them to /onboarding to complete it.
+    try {
+      const p = data as Profile | null;
+      if (typeof window !== "undefined" && p?.onboarded && !p.consent_acknowledged) {
+        const path = window.location.pathname;
+        const exempt = path === "/onboarding" || path === "/auth" || path === "/banned" || path === "/";
+        if (!exempt) window.location.replace("/onboarding");
+      }
+    } catch (e) {
+      console.error("[consent-check]", e);
     }
 
     // Only set loading false for initial load

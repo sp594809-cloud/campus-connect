@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Briefcase, Hash, Heart, MessageCircle, MoreHorizontal, Pencil, Pin, Plus, Search, Send, Share2, Sparkles, Trash2, User, X, Paperclip, FileText } from "lucide-react";
+import { Briefcase, Flag, Hash, Heart, MessageCircle, MoreHorizontal, Pencil, Pin, Plus, Search, Send, Share2, Sparkles, Trash2, User, X, Paperclip, FileText } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +15,7 @@ import { moderate } from "@/lib/moderation";
 import { StreakBanner } from "../StreakBanner";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ShareDrawer } from "../ShareDrawer";
+import { ReportSheet } from "@/components/safety/ReportSheet";
 
 interface FeedPost {
   id: string;
@@ -58,6 +59,7 @@ export const HomeScreen = () => {
   const [enrollmentMatchName, setEnrollmentMatchName] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<typeof CATEGORIES[number]>("All");
   const [sharePost, setSharePost] = useState<FeedPost | null>(null);
+  const [reportPost, setReportPost] = useState<FeedPost | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -397,6 +399,34 @@ export const HomeScreen = () => {
                     )}
                   </div>
                 )}
+                {post.author_id !== user?.id && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setMenuFor((m) => (m === post.id ? null : post.id))}
+                      aria-label="Post options"
+                      className="h-8 w-8 rounded-full hover:bg-secondary flex items-center justify-center"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </button>
+                    {menuFor === post.id && (
+                      <>
+                        <button
+                          aria-label="Close menu"
+                          className="fixed inset-0 z-10 cursor-default"
+                          onClick={() => setMenuFor(null)}
+                        />
+                        <div className="absolute right-0 top-9 z-20 w-44 glass-card rounded-2xl shadow-elevated overflow-hidden animate-scale-in">
+                          <button
+                            onClick={() => { setReportPost(post); setMenuFor(null); }}
+                            className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium hover:bg-destructive/10 text-destructive text-left"
+                          >
+                            <Flag className="h-4 w-4" /> Report this post
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               <p className="mt-5 text-[15px] leading-relaxed text-foreground whitespace-pre-wrap">{post.content}</p>
               {post.attachment_url && post.attachment_type === "image" && (
@@ -443,6 +473,14 @@ export const HomeScreen = () => {
         busy={working}
         onCancel={() => setConfirmDelete(null)}
         onConfirm={deletePost}
+      />
+
+      <ReportSheet
+        open={!!reportPost}
+        onClose={() => setReportPost(null)}
+        contentType="post"
+        contentId={reportPost?.id ?? ""}
+        reportedUserId={reportPost?.author_id ?? null}
       />
 
       {editing && (

@@ -75,7 +75,9 @@ export type Database = {
           emoji: string
           id: string
           interest: string
+          moderator_id: string | null
           name: string
+          rules: string | null
         }
         Insert: {
           admins_only?: boolean
@@ -86,7 +88,9 @@ export type Database = {
           emoji?: string
           id?: string
           interest: string
+          moderator_id?: string | null
           name: string
+          rules?: string | null
         }
         Update: {
           admins_only?: boolean
@@ -97,7 +101,9 @@ export type Database = {
           emoji?: string
           id?: string
           interest?: string
+          moderator_id?: string | null
           name?: string
+          rules?: string | null
         }
         Relationships: [
           {
@@ -1584,6 +1590,8 @@ export type Database = {
           college_email_verified: boolean
           college_name: string | null
           company: string | null
+          consent_acknowledged: boolean
+          consent_acknowledged_at: string | null
           created_at: string
           discoverable: boolean
           github: string | null
@@ -1601,6 +1609,7 @@ export type Database = {
           open_to_mentor: boolean
           placement_status: Database["public"]["Enums"]["placement_status"]
           profile_visibility: string
+          recruiter_visible: boolean
           resume_url: string | null
           skills: string[]
           updated_at: string
@@ -1617,6 +1626,8 @@ export type Database = {
           college_email_verified?: boolean
           college_name?: string | null
           company?: string | null
+          consent_acknowledged?: boolean
+          consent_acknowledged_at?: string | null
           created_at?: string
           discoverable?: boolean
           github?: string | null
@@ -1634,6 +1645,7 @@ export type Database = {
           open_to_mentor?: boolean
           placement_status?: Database["public"]["Enums"]["placement_status"]
           profile_visibility?: string
+          recruiter_visible?: boolean
           resume_url?: string | null
           skills?: string[]
           updated_at?: string
@@ -1650,6 +1662,8 @@ export type Database = {
           college_email_verified?: boolean
           college_name?: string | null
           company?: string | null
+          consent_acknowledged?: boolean
+          consent_acknowledged_at?: string | null
           created_at?: string
           discoverable?: boolean
           github?: string | null
@@ -1667,6 +1681,7 @@ export type Database = {
           open_to_mentor?: boolean
           placement_status?: Database["public"]["Enums"]["placement_status"]
           profile_visibility?: string
+          recruiter_visible?: boolean
           resume_url?: string | null
           skills?: string[]
           updated_at?: string
@@ -1830,6 +1845,48 @@ export type Database = {
           full_name?: string
           phone_number?: string
           registered_at?: string
+        }
+        Relationships: []
+      }
+      reports: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string
+          details: string | null
+          id: string
+          reason: string
+          reported_user_id: string | null
+          reporter_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: string
+          reported_user_id?: string | null
+          reporter_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          reported_user_id?: string | null
+          reporter_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -2119,6 +2176,7 @@ export type Database = {
             | Database["public"]["Enums"]["placement_status"]
             | null
           posts_count: number | null
+          recruiter_visible: boolean | null
           skills: string[] | null
           total_completed: number | null
           username: string | null
@@ -2327,6 +2385,10 @@ export type Database = {
     Functions: {
       are_connected: { Args: { a: string; b: string }; Returns: boolean }
       cleanup_expired_otp_codes: { Args: never; Returns: number }
+      delete_community_message: {
+        Args: { _message_id: string }
+        Returns: undefined
+      }
       get_or_create_conversation: {
         Args: { other_user: string }
         Returns: string
@@ -2384,6 +2446,10 @@ export type Database = {
       }
       purchase_material: { Args: { _material_id: string }; Returns: string }
       refresh_top_selling_materials: { Args: never; Returns: undefined }
+      remove_community_member: {
+        Args: { _community_id: string; _user_id: string }
+        Returns: undefined
+      }
       search_my_library: {
         Args: { match_count?: number; query_embedding: string }
         Returns: {
@@ -2391,6 +2457,14 @@ export type Database = {
           material_id: string
           similarity: number
         }[]
+      }
+      transfer_community_moderator: {
+        Args: { _community_id: string; _new_mod: string }
+        Returns: undefined
+      }
+      update_community_rules: {
+        Args: { _community_id: string; _rules: string }
+        Returns: undefined
       }
     }
     Enums: {

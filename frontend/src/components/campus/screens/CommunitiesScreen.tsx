@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Users, Plus, X, Trash2, ArrowLeft, Send, Paperclip, FileText, Settings, CheckCheck, Lock, LogOut } from "lucide-react";
+import { Users, Plus, X, Trash2, ArrowLeft, Send, Paperclip, FileText, Settings, CheckCheck, Lock, LogOut, Flag, Shield, Crown, ScrollText, Pencil, UserMinus } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import { ConfirmDialog } from "../ConfirmDialog";
 import { fetchProfilesByIds, type MiniProfile } from "@/lib/api/profiles";
 import { CodeOfConductDialog } from "@/components/community/CodeOfConductDialog";
 import { moderate } from "@/lib/moderation";
+import { ReportSheet } from "@/components/safety/ReportSheet";
 
 interface Community {
   id: string;
@@ -23,6 +24,8 @@ interface Community {
   member_count: number;
   created_by: string | null;
   admins_only?: boolean;
+  moderator_id?: string | null;
+  rules?: string | null;
 }
 
 interface CMsg {
@@ -261,10 +264,21 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
   const [showSettings, setShowSettings] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [reportMsg, setReportMsg] = useState<CMsg | null>(null);
+  const [actionMsg, setActionMsg] = useState<CMsg | null>(null);
+  const [moderatorId, setModeratorId] = useState<string | null>(community.moderator_id ?? null);
+  const [rules, setRules] = useState<string>(community.rules ?? "");
+  const [showRules, setShowRules] = useState(false);
+  const [editingRules, setEditingRules] = useState(false);
+  const [rulesDraft, setRulesDraft] = useState<string>(community.rules ?? "");
+  const [showMembers, setShowMembers] = useState(false);
+  const [members, setMembers] = useState<{ user_id: string; name: string; avatar_url: string | null }[]>([]);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const isAdmin = community.created_by === user?.id;
-  const canSend = isAdmin || !adminsOnly;
+  const isCreator = community.created_by === user?.id;
+  const isMod = !!user && (moderatorId === user.id || isCreator);
+  const canSend = isCreator || !adminsOnly;
 
   const load = async () => {
     const { data, error } = await supabase
@@ -291,7 +305,17 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
       .select("admins_only")
       .eq("id", community.id)
       .maybeSingle<{ admins_only: boolean }>();
-    if (c) setAdminsOnly(!!c.admins_only);
+    // refresh community meta (rules, moderator, admins_only)
+    const { data: c2 } = await supabase
+      .from("communities")
+      .select("admins_only, moderator_id, rules")
+      .eq("id", community.id)
+      .maybeSingle<{ admins_only: boolean; moderator_id: string | null; rules: string | null }>();
+    if (c2) {
+      setAdminsOnly(!!c2.admins_only);
+      setModeratorId(c2.moderator_id);
+      setRules(c2.rules ?? "");
+    }
   };
 
   useEffect(() => { load(); }, [community.id]);
@@ -375,6 +399,47 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
     onBack();
   };
 
+  const removeMessage = async (m: CMsg) => {
+    const { error } = await supabase.rpc("delete_community_message", { _message_id: m.id });
+    if (error) { toast.error(error.message); return; }
+    setMsgs((prev) => prev.filter((x) => x.id !== m.id));
+    toast.success("Message removed");
+  };
+
+  const saveRules = async () => {
+    const next = rulesDraft.trim().slice(0, 4000);
+    const { error } = await supabase.rpc("update_community_rules", { _community_id: community.id, _rules: next });
+    if (error) { toast.error(error.message); return; }
+    setRules(next);
+    setEditingRules(false);
+    toast.success("Rules updated");
+  };
+
+  const loadMembers = async () => {
+    const { data } = await supabase.from("community_members").select("user_id").eq("community_id", community.id);
+    const ids = (data ?? []).map((m: { user_id: string }) => m.user_id);
+    if (!ids.length) { setMembers([]); return; }
+    const profs = await fetchProfilesByIds(ids).catch(() => [] as MiniProfile[]);
+    const pMap = new Map(profs.map((p) => [p.id, p]));
+    setMembers(ids.map((id) => ({ user_id: id, name: pMap.get(id)?.name ?? "Member", avatar_url: pMap.get(id)?.avatar_url ?? null })));
+  };
+
+  const removeMember = async (uid: string) => {
+    if (!confirm("Remove this member from the community?")) return;
+    const { error } = await supabase.rpc("remove_community_member", { _community_id: community.id, _user_id: uid });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Member removed");
+    loadMembers();
+  };
+
+  const transferMod = async (uid: string) => {
+    if (!confirm("Transfer the moderator role to this member? You'll no longer be the primary moderator.")) return;
+    const { error } = await supabase.rpc("transfer_community_moderator", { _community_id: community.id, _new_mod: uid });
+    if (error) { toast.error(error.message); return; }
+    setModeratorId(uid);
+    toast.success("Moderator transferred");
+  };
+
   return (
     <div className="flex flex-col h-screen animate-fade-in-up">
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl px-4 pt-6 pb-3 border-b border-border flex items-center gap-3">
@@ -386,18 +451,39 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
             <Users className="h-3 w-3" /> {community.member_count} members{adminsOnly && <> · <Lock className="h-3 w-3" /> admins only</>}
           </p>
         </div>
-        {isAdmin && (
-          <button onClick={() => setShowSettings(true)} aria-label="Settings" className="h-9 w-9 rounded-full hover:bg-secondary flex items-center justify-center"><Settings className="h-5 w-5" /></button>
-        )}
+        <button onClick={() => setShowRules(true)} aria-label="Community rules" className="h-9 w-9 rounded-full hover:bg-secondary flex items-center justify-center"><ScrollText className="h-5 w-5" /></button>
+        <button onClick={() => setShowSettings(true)} aria-label="Settings" className="h-9 w-9 rounded-full hover:bg-secondary flex items-center justify-center"><Settings className="h-5 w-5" /></button>
       </header>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5 pb-36 bg-[hsl(var(--muted))]/30">
+        {rules && (
+          <button
+            onClick={() => setShowRules(true)}
+            className="w-full text-left rounded-2xl border border-warning/40 bg-warning/5 px-3 py-2.5 mb-2 hover:bg-warning/10 transition-smooth"
+          >
+            <div className="flex items-center gap-2 text-warning text-[11px] font-bold uppercase tracking-wider">
+              <ScrollText className="h-3.5 w-3.5" /> Community rules · Pinned
+            </div>
+            <p className="text-xs text-foreground mt-1 line-clamp-2 whitespace-pre-wrap">{rules}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Tap to read</p>
+          </button>
+        )}
         {msgs.length === 0 && <p className="text-center text-xs text-muted-foreground py-8">No messages yet. Say hi 👋</p>}
         {msgs.map((m) => {
           const fromMe = m.sender_id === user?.id;
+          const startPress = () => { pressTimer.current = setTimeout(() => setActionMsg(m), 550); };
+          const cancelPress = () => { if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; } };
           return (
             <div key={m.id} className={cn("flex", fromMe ? "justify-end" : "justify-start")}>
-              <div className={cn("max-w-[78%] px-2.5 py-1.5 rounded-2xl text-sm shadow-soft animate-scale-in",
+              <div
+                onContextMenu={(e) => { e.preventDefault(); setActionMsg(m); }}
+                onTouchStart={startPress}
+                onTouchEnd={cancelPress}
+                onTouchMove={cancelPress}
+                onMouseDown={startPress}
+                onMouseUp={cancelPress}
+                onMouseLeave={cancelPress}
+                className={cn("max-w-[78%] px-2.5 py-1.5 rounded-2xl text-sm shadow-soft animate-scale-in select-none",
                 fromMe ? "bg-[#dcf8c6] rounded-br-sm" : "bg-white border border-border/50 rounded-bl-sm")}>
                 {!fromMe && m.sender && (
                   <p className="text-[11px] font-bold text-primary px-1">{m.sender.name}</p>
@@ -445,23 +531,39 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
               <h3 className="font-bold">Group settings</h3>
               <button onClick={() => setShowSettings(false)} aria-label="Close" className="h-8 w-8 rounded-full hover:bg-secondary flex items-center justify-center"><X className="h-4 w-4" /></button>
             </div>
-            <button onClick={toggleAdminsOnly} className="w-full flex items-center justify-between p-4 rounded-2xl bg-secondary hover:bg-secondary/80 transition-smooth">
-              <div className="text-left">
-                <p className="text-sm font-semibold">Only admins can send messages</p>
-                <p className="text-xs text-muted-foreground">Restrict who can post in this community</p>
-              </div>
-              <div className={cn("w-11 h-6 rounded-full relative transition-smooth", adminsOnly ? "bg-primary" : "bg-muted-foreground/30")}>
-                <div className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-background shadow-soft transition-transform", adminsOnly ? "translate-x-5" : "translate-x-0.5")} />
-              </div>
-            </button>
-            {!isAdmin && (
-              <button
-                onClick={() => setConfirmLeave(true)}
-                className="mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-border bg-background text-sm font-semibold text-muted-foreground hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive transition-smooth"
-              >
-                <LogOut className="h-4 w-4" /> Leave group
-              </button>
+            {isMod && (
+              <>
+                <button onClick={toggleAdminsOnly} className="w-full flex items-center justify-between p-4 rounded-2xl bg-secondary hover:bg-secondary/80 transition-smooth">
+                  <div className="text-left">
+                    <p className="text-sm font-semibold">Only admins can send messages</p>
+                    <p className="text-xs text-muted-foreground">Restrict who can post in this community</p>
+                  </div>
+                  <div className={cn("w-11 h-6 rounded-full relative transition-smooth", adminsOnly ? "bg-primary" : "bg-muted-foreground/30")}>
+                    <div className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-background shadow-soft transition-transform", adminsOnly ? "translate-x-5" : "translate-x-0.5")} />
+                  </div>
+                </button>
+                <button onClick={() => { setShowSettings(false); setRulesDraft(rules); setEditingRules(true); }} className="mt-2 w-full flex items-center gap-3 p-4 rounded-2xl bg-secondary hover:bg-secondary/80 transition-smooth text-left">
+                  <Pencil className="h-4 w-4 text-primary" />
+                  <div>
+                    <p className="text-sm font-semibold">Edit community rules</p>
+                    <p className="text-xs text-muted-foreground">Shown to every member at the top of the chat</p>
+                  </div>
+                </button>
+                <button onClick={() => { setShowSettings(false); setShowMembers(true); loadMembers(); }} className="mt-2 w-full flex items-center gap-3 p-4 rounded-2xl bg-secondary hover:bg-secondary/80 transition-smooth text-left">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <div>
+                    <p className="text-sm font-semibold">Manage members</p>
+                    <p className="text-xs text-muted-foreground">Remove members or transfer the moderator role</p>
+                  </div>
+                </button>
+              </>
             )}
+            <button
+              onClick={() => setConfirmLeave(true)}
+              className="mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-border bg-background text-sm font-semibold text-muted-foreground hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive transition-smooth"
+            >
+              <LogOut className="h-4 w-4" /> Leave group
+            </button>
           </div>
         </div>
       )}
@@ -475,6 +577,113 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
         busy={leaving}
         onCancel={() => setConfirmLeave(false)}
         onConfirm={leaveGroup}
+      />
+
+      {/* Rules viewer */}
+      {showRules && (
+        <div className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" onClick={() => setShowRules(false)}>
+          <div className="bg-card rounded-3xl p-5 w-full max-w-md shadow-elevated animate-scale-in max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2"><ScrollText className="h-4 w-4 text-warning" /><h3 className="font-bold">Community rules</h3></div>
+              <button onClick={() => setShowRules(false)} aria-label="Close" className="h-8 w-8 rounded-full hover:bg-secondary flex items-center justify-center"><X className="h-4 w-4" /></button>
+            </div>
+            <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{rules || "No rules set yet."}</p>
+            {isMod && (
+              <button onClick={() => { setShowRules(false); setRulesDraft(rules); setEditingRules(true); }} className="mt-4 w-full py-2.5 rounded-2xl bg-secondary text-sm font-semibold hover:bg-secondary/80 transition-smooth flex items-center justify-center gap-2">
+                <Pencil className="h-4 w-4" /> Edit rules
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Rules editor */}
+      {editingRules && (
+        <div className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" onClick={() => setEditingRules(false)}>
+          <div className="bg-card rounded-3xl p-5 w-full max-w-md shadow-elevated animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold">Edit rules</h3>
+              <button onClick={() => setEditingRules(false)} aria-label="Close" className="h-8 w-8 rounded-full hover:bg-secondary flex items-center justify-center"><X className="h-4 w-4" /></button>
+            </div>
+            <textarea
+              value={rulesDraft}
+              onChange={(e) => setRulesDraft(e.target.value.slice(0, 4000))}
+              rows={10}
+              className="w-full px-3 py-2 rounded-2xl bg-secondary text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+            />
+            <p className="text-[10px] text-muted-foreground text-right mt-0.5">{rulesDraft.length}/4000</p>
+            <button onClick={saveRules} className="mt-3 w-full py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow">Save rules</button>
+          </div>
+        </div>
+      )}
+
+      {/* Members manager */}
+      {showMembers && (
+        <div className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" onClick={() => setShowMembers(false)}>
+          <div className="bg-card rounded-3xl p-5 w-full max-w-md shadow-elevated animate-scale-in max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /><h3 className="font-bold">Manage members</h3></div>
+              <button onClick={() => setShowMembers(false)} aria-label="Close" className="h-8 w-8 rounded-full hover:bg-secondary flex items-center justify-center"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="space-y-2">
+              {members.length === 0 && <p className="text-xs text-muted-foreground">No members loaded.</p>}
+              {members.map((m) => {
+                const isPrimary = m.user_id === moderatorId;
+                const me = m.user_id === user?.id;
+                return (
+                  <div key={m.user_id} className="flex items-center gap-2 p-2 rounded-xl bg-secondary">
+                    {m.avatar_url ? (
+                      <img src={m.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="h-8 w-8 rounded-full bg-gradient-hero" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate flex items-center gap-1">{m.name}{isPrimary && <Crown className="h-3 w-3 text-warning" />}</p>
+                      <p className="text-[10px] text-muted-foreground">{isPrimary ? "Primary moderator" : me ? "You" : "Member"}</p>
+                    </div>
+                    {!isPrimary && !me && moderatorId === user?.id && (
+                      <button onClick={() => transferMod(m.user_id)} className="text-[11px] font-semibold px-2 py-1 rounded-full bg-background border border-border hover:bg-secondary/70">Make mod</button>
+                    )}
+                    {!isPrimary && !me && (
+                      <button onClick={() => removeMember(m.user_id)} aria-label="Remove" className="h-7 w-7 rounded-full bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20">
+                        <UserMinus className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Message action sheet (long-press) */}
+      {actionMsg && (
+        <div className="fixed inset-0 z-[150] bg-foreground/40 backdrop-blur-sm flex items-end justify-center" onClick={() => setActionMsg(null)}>
+          <div className="bg-card rounded-t-3xl w-full max-w-md p-4 space-y-2 shadow-elevated animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            {actionMsg.sender_id !== user?.id && (
+              <button onClick={() => { setReportMsg(actionMsg); setActionMsg(null); }} className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-secondary text-left">
+                <Flag className="h-4 w-4 text-destructive" />
+                <span className="text-sm font-semibold">Report message</span>
+              </button>
+            )}
+            {isMod && (
+              <button onClick={() => { const m = actionMsg; setActionMsg(null); if (m) removeMessage(m); }} className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-destructive/10 text-left">
+                <Trash2 className="h-4 w-4 text-destructive" />
+                <span className="text-sm font-semibold text-destructive">Remove message (mod)</span>
+              </button>
+            )}
+            <button onClick={() => setActionMsg(null)} className="w-full text-center text-sm font-semibold py-2 text-muted-foreground">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      <ReportSheet
+        open={!!reportMsg}
+        onClose={() => setReportMsg(null)}
+        contentType="community_message"
+        contentId={reportMsg?.id ?? ""}
+        reportedUserId={reportMsg?.sender_id ?? null}
       />
     </div>
   );

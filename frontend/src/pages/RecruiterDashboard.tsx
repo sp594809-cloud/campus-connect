@@ -55,6 +55,8 @@ const RecruiterDashboard = () => {
       setLoading(true);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let q: any = (supabase as unknown as { from: (t: string)=> any }).from("employability_score_view").select("*");
+      // Only show students who have opted in to recruiter visibility.
+      q = q.eq("recruiter_visible", true);
       if (filters.branch !== "any") q = q.eq("branch", filters.branch);
       if (filters.graduation_year !== "any") q = q.eq("graduation_year", Number(filters.graduation_year));
       if (filters.placement_status !== "any") q = q.eq("placement_status", filters.placement_status);

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Plus, ShoppingBag, X, Trash2, Paperclip, CheckCircle2, RotateCcw, Lock, Unlock, FileText, Video, Download, ExternalLink, BookOpen } from "lucide-react";
+import { Loader2, Plus, ShoppingBag, X, Trash2, Paperclip, CheckCircle2, RotateCcw, Lock, Unlock, FileText, Video, Download, ExternalLink, BookOpen, Flag } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import { ConfirmDialog } from "../ConfirmDialog";
 import { cn } from "@/lib/utils";
 import { PdfAiPanel } from "../PdfAiPanel";
 import { Search } from "lucide-react";
+import { ReportSheet } from "@/components/safety/ReportSheet";
 
 interface Listing {
   id: string;
@@ -70,6 +71,7 @@ export const MarketplaceScreen = () => {
   const pdfRef = useRef<HTMLInputElement>(null);
   const [confirmDel, setConfirmDel] = useState<Listing | null>(null);
   const [working, setWorking] = useState(false);
+  const [reportListing, setReportListing] = useState<Listing | null>(null);
 
   // Field-level error state for inline contextual error handling.
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -580,6 +582,15 @@ export const MarketplaceScreen = () => {
                       <Trash2 className="h-3 w-3" />
                     </button>
                   )}
+                  {user?.id !== it.seller_id && (
+                    <button
+                      onClick={() => setReportListing(it)}
+                      aria-label="Report listing"
+                      className="ml-1 text-[11px] text-muted-foreground flex items-center gap-1 px-2 py-1 rounded-full hover:bg-destructive/10 hover:text-destructive transition-smooth"
+                    >
+                      <Flag className="h-3 w-3" />
+                    </button>
+                  )}
                 </div>
               </div>
             </article>
@@ -596,6 +607,14 @@ export const MarketplaceScreen = () => {
         busy={working}
         onCancel={() => setConfirmDel(null)}
         onConfirm={remove}
+      />
+
+      <ReportSheet
+        open={!!reportListing}
+        onClose={() => setReportListing(null)}
+        contentType="listing"
+        contentId={reportListing?.id ?? ""}
+        reportedUserId={reportListing?.seller_id ?? null}
       />
 
       {/* Sell modal */}

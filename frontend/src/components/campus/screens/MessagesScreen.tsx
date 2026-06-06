@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Send, Sparkles, Paperclip, FileText, Check, CheckCheck, X } from "lucide-react";
+import { ArrowLeft, Flag, Send, Sparkles, Paperclip, FileText, Check, CheckCheck, X } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,6 +10,7 @@ import { formatDistanceToNow } from "date-fns";
 import { uploadAttachment, detectKind } from "@/lib/uploads";
 import { fetchPublicProfilesByIds } from "@/lib/api/profiles";
 import { toast } from "sonner";
+import { ReportSheet } from "@/components/safety/ReportSheet";
 
 interface ConvRow {
   id: string;
@@ -150,6 +151,8 @@ const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProf
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [draft, setDraft] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [reportMsg, setReportMsg] = useState<MessageRow | null>(null);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -238,9 +241,22 @@ const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProf
         )}
         {messages.map((m) => {
           const fromMe = m.sender_id === user?.id;
+          const startPress = () => {
+            if (fromMe) return;
+            pressTimer.current = setTimeout(() => setReportMsg(m), 550);
+          };
+          const cancelPress = () => { if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; } };
           return (
             <div key={m.id} className={cn("flex", fromMe ? "justify-end" : "justify-start")}>
-              <div className={cn("max-w-[78%] px-2.5 py-1.5 rounded-2xl text-sm shadow-soft animate-scale-in",
+              <div
+                onContextMenu={(e) => { if (!fromMe) { e.preventDefault(); setReportMsg(m); } }}
+                onTouchStart={startPress}
+                onTouchEnd={cancelPress}
+                onTouchMove={cancelPress}
+                onMouseDown={startPress}
+                onMouseUp={cancelPress}
+                onMouseLeave={cancelPress}
+                className={cn("max-w-[78%] px-2.5 py-1.5 rounded-2xl text-sm shadow-soft animate-scale-in select-none",
                 fromMe
                   ? "bg-[#dcf8c6] text-foreground rounded-br-sm"
                   : "bg-white text-foreground rounded-bl-sm border border-border/50")}>
@@ -277,6 +293,14 @@ const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProf
         </div>
         {uploading && <p className="text-[11px] text-muted-foreground mt-1 text-center">Uploading…</p>}
       </div>
+
+      <ReportSheet
+        open={!!reportMsg}
+        onClose={() => setReportMsg(null)}
+        contentType="message"
+        contentId={reportMsg?.id ?? ""}
+        reportedUserId={reportMsg?.sender_id ?? null}
+      />
     </div>
   );
 };
