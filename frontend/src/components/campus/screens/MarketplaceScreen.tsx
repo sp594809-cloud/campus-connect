@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Plus, ShoppingBag, X, Trash2, Paperclip, CheckCircle2, RotateCcw, Lock, Unlock, FileText, Video, Download, ExternalLink, BookOpen } from "lucide-react";
+import { Loader2, Plus, ShoppingBag, X, Trash2, Paperclip, CheckCircle2, RotateCcw, Lock, Unlock, FileText, Video, Download, ExternalLink, BookOpen, Flag } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import { ConfirmDialog } from "../ConfirmDialog";
 import { cn } from "@/lib/utils";
 import { PdfAiPanel } from "../PdfAiPanel";
 import { Search } from "lucide-react";
+import { ReportSheet } from "@/components/safety/ReportSheet";
 
 interface Listing {
   id: string;
