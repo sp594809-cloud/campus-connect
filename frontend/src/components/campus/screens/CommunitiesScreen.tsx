@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Users, Plus, X, Trash2, ArrowLeft, Send, Paperclip, FileText, Settings, CheckCheck, Lock, LogOut, Flag, Shield, Crown, ScrollText, Pencil, UserMinus } from "lucide-react";
+import { Users, Plus, X, Trash2, ArrowLeft, Send, Paperclip, FileText, Settings, CheckCheck, Lock, LogOut, Flag, Shield, Crown, ScrollText, Pencil, UserMinus, Ban } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -406,6 +406,21 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
     toast.success("Message removed");
   };
 
+  const deleteOwnMessage = async (m: CMsg) => {
+    const { error } = await supabase.from("community_messages").delete().eq("id", m.id);
+    if (error) { toast.error(error.message); return; }
+    setMsgs((prev) => prev.filter((x) => x.id !== m.id));
+    toast.success("Message deleted");
+  };
+
+  const blockSender = async (m: CMsg) => {
+    if (!user) return;
+    const { error } = await supabase.from("user_blocks").insert({ blocker_id: user.id, blocked_id: m.sender_id });
+    if (error) { toast.error(error.message); return; }
+    setMsgs((prev) => prev.filter((x) => x.sender_id !== m.sender_id));
+    toast.success("User blocked");
+  };
+
   const saveRules = async () => {
     const next = rulesDraft.trim().slice(0, 4000);
     const { error } = await supabase.rpc("update_community_rules", { _community_id: community.id, _rules: next });
@@ -662,9 +677,21 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
         <div className="fixed inset-0 z-[150] bg-foreground/40 backdrop-blur-sm flex items-end justify-center" onClick={() => setActionMsg(null)}>
           <div className="bg-card rounded-t-3xl w-full max-w-md p-4 space-y-2 shadow-elevated animate-scale-in" onClick={(e) => e.stopPropagation()}>
             {actionMsg.sender_id !== user?.id && (
-              <button onClick={() => { setReportMsg(actionMsg); setActionMsg(null); }} className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-secondary text-left">
-                <Flag className="h-4 w-4 text-destructive" />
-                <span className="text-sm font-semibold">Report message</span>
+              <>
+                <button onClick={() => { setReportMsg(actionMsg); setActionMsg(null); }} className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-secondary text-left">
+                  <Flag className="h-4 w-4 text-destructive" />
+                  <span className="text-sm font-semibold">Report message</span>
+                </button>
+                <button onClick={() => { const m = actionMsg; setActionMsg(null); if (m) blockSender(m); }} className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-destructive/10 text-left">
+                  <Ban className="h-4 w-4 text-destructive" />
+                  <span className="text-sm font-semibold text-destructive">Block user</span>
+                </button>
+              </>
+            )}
+            {actionMsg.sender_id === user?.id && (
+              <button onClick={() => { const m = actionMsg; setActionMsg(null); if (m) deleteOwnMessage(m); }} className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-destructive/10 text-left">
+                <Trash2 className="h-4 w-4 text-destructive" />
+                <span className="text-sm font-semibold text-destructive">Delete message</span>
               </button>
             )}
             {isMod && (
