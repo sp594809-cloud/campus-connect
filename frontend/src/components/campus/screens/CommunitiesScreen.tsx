@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Users, Plus, X, Trash2, ArrowLeft, Send, Paperclip, FileText, Settings, CheckCheck, Lock, LogOut } from "lucide-react";
+import { Users, Plus, X, Trash2, ArrowLeft, Send, Paperclip, FileText, Settings, CheckCheck, Lock, LogOut, Flag, Shield, Crown, ScrollText, Pencil, UserMinus } from "lucide-react";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import { ConfirmDialog } from "../ConfirmDialog";
 import { fetchProfilesByIds, type MiniProfile } from "@/lib/api/profiles";
 import { CodeOfConductDialog } from "@/components/community/CodeOfConductDialog";
 import { moderate } from "@/lib/moderation";
+import { ReportSheet } from "@/components/safety/ReportSheet";
 
 interface Community {
   id: string;
@@ -23,6 +24,8 @@ interface Community {
   member_count: number;
   created_by: string | null;
   admins_only?: boolean;
+  moderator_id?: string | null;
+  rules?: string | null;
 }
 
 interface CMsg {
