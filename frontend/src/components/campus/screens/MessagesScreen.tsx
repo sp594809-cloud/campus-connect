@@ -167,6 +167,9 @@ const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProf
   const [draft, setDraft] = useState("");
   const [uploading, setUploading] = useState(false);
   const [reportMsg, setReportMsg] = useState<MessageRow | null>(null);
+  const [actionMsg, setActionMsg] = useState<MessageRow | null>(null);
+  const [headerMenu, setHeaderMenu] = useState(false);
+  const [confirmBlock, setConfirmBlock] = useState(false);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -202,6 +205,22 @@ const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProf
     await supabase.from("messages").insert({ conversation_id: convId, sender_id: user.id, content: text.trim().slice(0, 1000) });
   };
 
+  const deleteMessage = async (m: MessageRow) => {
+    const { error } = await supabase.from("messages").delete().eq("id", m.id);
+    if (error) { toast.error(error.message); return; }
+    setMessages((prev) => prev.filter((x) => x.id !== m.id));
+    toast.success("Message deleted");
+  };
+
+  const blockOther = async () => {
+    if (!user) return;
+    const { error } = await supabase.from("user_blocks").insert({ blocker_id: user.id, blocked_id: other.id });
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${other.name.split(" ")[0]} blocked`);
+    setConfirmBlock(false);
+    onBack();
+  };
+
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -232,6 +251,24 @@ const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProf
           <p className="font-semibold text-sm truncate">{other.name}</p>
           <p className="text-[11px] text-muted-foreground">{other.branch ?? "—"} · {other.year ?? "—"} year{other.open_to_mentor ? " · 🧑‍🏫 Mentor" : ""}</p>
         </div>
+        <div className="relative">
+          <button onClick={() => setHeaderMenu((v) => !v)} aria-label="Chat options" className="h-9 w-9 rounded-full hover:bg-secondary flex items-center justify-center">
+            <MoreVertical className="h-5 w-5" />
+          </button>
+          {headerMenu && (
+            <>
+              <button aria-hidden className="fixed inset-0 z-40 cursor-default" onClick={() => setHeaderMenu(false)} />
+              <div className="absolute right-0 top-11 z-50 bg-card border border-border rounded-2xl shadow-elevated overflow-hidden w-44">
+                <button
+                  onClick={() => { setHeaderMenu(false); setConfirmBlock(true); }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 text-left"
+                >
+                  <Ban className="h-4 w-4" /> Block {other.name.split(" ")[0]}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </header>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-1.5 pb-36 bg-[hsl(var(--muted))]/30">
@@ -257,14 +294,13 @@ const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProf
         {messages.map((m) => {
           const fromMe = m.sender_id === user?.id;
           const startPress = () => {
-            if (fromMe) return;
-            pressTimer.current = setTimeout(() => setReportMsg(m), 550);
+            pressTimer.current = setTimeout(() => setActionMsg(m), 550);
           };
           const cancelPress = () => { if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; } };
           return (
             <div key={m.id} className={cn("flex", fromMe ? "justify-end" : "justify-start")}>
               <div
-                onContextMenu={(e) => { if (!fromMe) { e.preventDefault(); setReportMsg(m); } }}
+                onContextMenu={(e) => { e.preventDefault(); setActionMsg(m); }}
                 onTouchStart={startPress}
                 onTouchEnd={cancelPress}
                 onTouchMove={cancelPress}
@@ -316,6 +352,44 @@ const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProf
         contentId={reportMsg?.id ?? ""}
         reportedUserId={reportMsg?.sender_id ?? null}
       />
+
+      {actionMsg && (
+        <div className="fixed inset-0 z-[150] bg-foreground/40 backdrop-blur-sm flex items-end justify-center" onClick={() => setActionMsg(null)}>
+          <div className="bg-card rounded-t-3xl w-full max-w-md p-4 space-y-2 shadow-elevated animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            {actionMsg.sender_id === user?.id ? (
+              <button onClick={() => { const m = actionMsg; setActionMsg(null); if (m) deleteMessage(m); }} className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-destructive/10 text-left">
+                <Trash2 className="h-4 w-4 text-destructive" />
+                <span className="text-sm font-semibold text-destructive">Delete message</span>
+              </button>
+            ) : (
+              <>
+                <button onClick={() => { setReportMsg(actionMsg); setActionMsg(null); }} className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-secondary text-left">
+                  <Flag className="h-4 w-4 text-destructive" />
+                  <span className="text-sm font-semibold">Report message</span>
+                </button>
+                <button onClick={() => { setActionMsg(null); setConfirmBlock(true); }} className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-destructive/10 text-left">
+                  <Ban className="h-4 w-4 text-destructive" />
+                  <span className="text-sm font-semibold text-destructive">Block {other.name.split(" ")[0]}</span>
+                </button>
+              </>
+            )}
+            <button onClick={() => setActionMsg(null)} className="w-full text-center text-sm font-semibold py-2 text-muted-foreground">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {confirmBlock && (
+        <div className="fixed inset-0 z-[160] bg-foreground/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setConfirmBlock(false)}>
+          <div className="bg-card rounded-3xl p-5 w-full max-w-sm shadow-elevated animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-2"><Ban className="h-5 w-5 text-destructive" /><h3 className="font-bold">Block {other.name}?</h3></div>
+            <p className="text-sm text-muted-foreground">They won't be able to message you and you won't see them in your chats. You can unblock anytime from Settings.</p>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setConfirmBlock(false)} className="flex-1 py-2.5 rounded-2xl bg-secondary text-sm font-semibold">Cancel</button>
+              <button onClick={blockOther} className="flex-1 py-2.5 rounded-2xl bg-destructive text-destructive-foreground text-sm font-semibold">Block</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
