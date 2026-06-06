@@ -44,10 +44,9 @@ export function usePublicProfiles(excludeId?: string) {
     queryKey: ["profiles", "public", "all", excludeId ?? null],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles")
+        .from("profiles_public" as any)
         .select(PROFILE_PUBLIC_COLS)
-        .eq("onboarded", true)
-        .order("created_at", { ascending: false });
+        .order("name", { ascending: true });
       if (error) throw error;
       return ((data ?? []) as unknown as PublicProfile[]).filter((p) => p.id !== excludeId);
     },
