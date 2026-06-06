@@ -609,6 +609,14 @@ export const MarketplaceScreen = () => {
         onConfirm={remove}
       />
 
+      <ReportSheet
+        open={!!reportListing}
+        onClose={() => setReportListing(null)}
+        contentType="listing"
+        contentId={reportListing?.id ?? ""}
+        reportedUserId={reportListing?.seller_id ?? null}
+      />
+
       {/* Sell modal */}
       {open && (
         <div className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" onClick={() => setOpen(false)}>
