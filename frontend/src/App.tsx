@@ -26,6 +26,7 @@ const Passport = lazy(() => import("./pages/Passport.tsx"));
 const RecruiterDashboard = lazy(() => import("./pages/RecruiterDashboard.tsx"));
 const RecruiterStudentDetail = lazy(() => import("./pages/RecruiterStudentDetail.tsx"));
 const CompanyDetailScreen = lazy(() => import("./components/campus/screens/CompanyDetailScreen.tsx"));
+const Banned = lazy(() => import("./pages/Banned.tsx"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
@@ -69,6 +70,7 @@ const App = () => (
             <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
             <Route path="/recruiter/student/:id" element={<RecruiterStudentDetail />} />
             <Route path="/companies/:name" element={<CompanyDetailScreen />} />
+            <Route path="/banned" element={<Banned />} />
             <Route path="/app" element={<Navigate to="/campus" replace />} />
               <Route path="*" element={<NotFound />} />
                 </Routes>

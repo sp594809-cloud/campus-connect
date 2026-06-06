@@ -11,17 +11,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useConnections } from "@/hooks/useConnections";
 import { useNavigate } from "react-router-dom";
 
-const branches = ["CSE","ECE","ME","EE","CE","IT","Other"];
-const years = ["1st","2nd","3rd","4th"];
-
 export const DiscoverScreen = ({ onMessage }: { onMessage: (id: string) => void }) => {
   const { user, profile } = useAuth();
   const { profiles, loading } = useProfiles(user?.id);
   const { stateWith, reload } = useConnections();
   const navigate = useNavigate();
   const [showFilters, setShowFilters] = useState(false);
-  const [branch, setBranch] = useState<string>("All");
-  const [year, setYear] = useState<string>("All");
   const [mentorOnly, setMentorOnly] = useState(false);
   const [placedOnly, setPlacedOnly] = useState(false);
   const [activeInterests, setActiveInterests] = useState<string[]>([]);
@@ -31,14 +26,12 @@ export const DiscoverScreen = ({ onMessage }: { onMessage: (id: string) => void 
 
   const filtered = useMemo(() => {
     return profiles.filter((s) => {
-      if (branch !== "All" && s.branch !== branch) return false;
-      if (year !== "All" && s.year !== year) return false;
       if (mentorOnly && !s.open_to_mentor) return false;
       if (placedOnly && s.placement_status !== "Placed") return false;
       if (activeInterests.length && !activeInterests.some((i) => s.interests.includes(i))) return false;
       return true;
     });
-  }, [profiles, branch, year, mentorOnly, placedOnly, activeInterests]);
+  }, [profiles, mentorOnly, placedOnly, activeInterests]);
 
   const myInterests = profile?.interests ?? [];
   const peopleYouMayKnow = useMemo(() => {
@@ -93,7 +86,7 @@ export const DiscoverScreen = ({ onMessage }: { onMessage: (id: string) => void 
 
   return (
     <div className="animate-fade-in-up">
-      <Header title="Discover" subtitle={`${filtered.length} students match`} />
+      <Header title="Discover" subtitle={`${filtered.length} students · find people by what they're into`} />
 
       {!loading && peopleYouMayKnow.length > 0 && (
         <section className="px-5 mt-4">
@@ -130,10 +123,10 @@ export const DiscoverScreen = ({ onMessage }: { onMessage: (id: string) => void 
         <button
           onClick={() => setShowFilters((s) => !s)}
           className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-smooth",
-            showFilters || branch !== "All" || year !== "All" || mentorOnly || placedOnly || activeInterests.length
+            showFilters || mentorOnly || placedOnly || activeInterests.length
               ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground")}
         >
-          <SlidersHorizontal className="h-4 w-4" /> Filters
+          <SlidersHorizontal className="h-4 w-4" /> Interests
         </button>
         <div className="flex gap-2 overflow-x-auto scrollbar-hide flex-1">
           <QuickToggle active={mentorOnly} onClick={() => setMentorOnly((v) => !v)}>🧑‍🏫 Mentors</QuickToggle>
@@ -143,10 +136,9 @@ export const DiscoverScreen = ({ onMessage }: { onMessage: (id: string) => void 
 
       {showFilters && (
         <div className="px-5 mt-3 p-4 rounded-2xl bg-card border border-border shadow-soft animate-scale-in space-y-4 mx-5">
-          <FilterGroup label="Branch" options={["All", ...branches]} value={branch} onChange={setBranch} />
-          <FilterGroup label="Year" options={["All", ...years]} value={year} onChange={setYear} />
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Interests</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Filter by interests</p>
+            <p className="text-[11px] text-muted-foreground mb-2">Branch and year filters were removed to protect student privacy.</p>
             <div className="flex gap-1.5 flex-wrap">
               {ALL_INTERESTS.map((i) => (
                 <InterestChip key={i} label={i} active={activeInterests.includes(i)} onClick={() => toggle(i)} />
@@ -161,8 +153,8 @@ export const DiscoverScreen = ({ onMessage }: { onMessage: (id: string) => void 
         {!loading && filtered.length === 0 && (
           <div className="text-center py-12">
             <p className="text-4xl mb-3">🔍</p>
-            <p className="font-semibold">No matches yet</p>
-            <p className="text-sm text-muted-foreground">Try loosening your filters — invite friends to join too!</p>
+            <p className="font-semibold">No one to show</p>
+            <p className="text-sm text-muted-foreground">Profiles are private by default. Students need to opt into Discover from their Privacy settings.</p>
           </div>
         )}
         {filtered.map((s, i) => (

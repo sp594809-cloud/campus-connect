@@ -6,6 +6,8 @@ import { InterestChip } from "@/components/campus/InterestChip";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
+import { PrivacySettings } from "@/components/privacy/PrivacySettings";
+import { ProfileViewsPanel } from "@/components/profile/ProfileViewsPanel";
 
 const StudentProfile = () => {
   const navigate = useNavigate();
@@ -224,6 +226,14 @@ const StudentProfile = () => {
             <button onClick={() => navigate("/mentors")} className="mt-3 w-full py-2 rounded-xl bg-secondary text-secondary-foreground text-xs font-semibold hover:bg-muted">
               Browse Mentor Directory
             </button>
+          </div>
+
+          <div className="mt-5">
+            <PrivacySettings />
+          </div>
+
+          <div className="mt-5">
+            <ProfileViewsPanel />
           </div>
 
           <button

@@ -28,6 +28,9 @@ export interface Profile {
   mentor_bio: string | null;
   mentor_topics: string[];
   karma_total: number;
+  discoverable?: boolean;
+  profile_visibility?: "public" | "connections" | "private";
+  views_incognito?: boolean;
 }
 
 interface AuthCtx {
@@ -102,7 +105,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     setProfile((data as Profile) ?? null);
-    
+
+    // Hard stop: if the user has an active global ban, kick them to /banned.
+    try {
+      const { data: banned } = await supabase.rpc("has_active_ban", { _uid: uid });
+      if (banned === true && typeof window !== "undefined" && !window.location.pathname.startsWith("/banned")) {
+        window.location.replace("/banned");
+      }
+    } catch (e) {
+      console.error("[ban-check]", e);
+    }
+
     // Only set loading false for initial load
     if (isInitial && !initialLoadComplete.current) {
       initialLoadComplete.current = true;

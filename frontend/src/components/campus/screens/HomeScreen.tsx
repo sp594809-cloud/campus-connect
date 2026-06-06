@@ -11,6 +11,7 @@ import { formatDistanceToNow } from "date-fns";
 import networkBg from "@/assets/network-bg.jpg";
 import { uploadAttachment, detectKind } from "@/lib/uploads";
 import { fetchProfilesByIds } from "@/lib/api/profiles";
+import { moderate } from "@/lib/moderation";
 import { StreakBanner } from "../StreakBanner";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ShareDrawer } from "../ShareDrawer";
@@ -123,6 +124,17 @@ export const HomeScreen = () => {
       toast.error("Post needs at least 10 characters");
       return;
     }
+    // Pre-publish moderation (keyword + ML)
+    const mod = await moderate(trimmed || tag.trim() || "(attachment)", "posts");
+    if (mod.banned) {
+      toast.error("Your account has been suspended for a zero-tolerance violation.");
+      window.location.replace("/banned");
+      return;
+    }
+    if (mod.decision === "rejected") {
+      toast.error("Post blocked", { description: mod.reason ?? "Content violates community guidelines." });
+      return;
+    }
     const { error } = await supabase.from("posts").insert({
       author_id: user.id,
       content: trimmed.slice(0, 500),
@@ -130,11 +142,16 @@ export const HomeScreen = () => {
       type: "update",
       attachment_url: attachment?.url ?? null,
       attachment_type: attachment?.type ?? null,
-    });
+      moderation_status: mod.decision,
+      moderation_reason: mod.reason,
+      moderated_at: new Date().toISOString(),
+    } as any);
     if (error) return toast.error(error.message);
     setDraft(""); setTag(""); setAttachment(null); setShowCompose(false);
-    toast.success("Post published 🎉", {
-      description: "Your update is live on the campus feed.",
+    toast.success(mod.decision === "shadow" ? "Submitted for review" : "Post published 🎉", {
+      description: mod.decision === "shadow"
+        ? "Visible only to you until a moderator approves it."
+        : "Your update is live on the campus feed.",
       style: {
         background: "hsl(152 68% 38%)",
         color: "white",

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Loader2, Sparkles, ShieldCheck, Globe, Users as UsersIcon, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ALL_INTERESTS } from "@/data/constants";
@@ -24,6 +24,8 @@ const StudentOnboarding = () => {
   const [skills, setSkills] = useState<string[]>([]);
   const [openToMentor, setOpenToMentor] = useState(false);
   const [mentorTopic, setMentorTopic] = useState("");
+  const [discoverable, setDiscoverable] = useState(false);
+  const [visibility, setVisibility] = useState<"public" | "connections" | "private">("connections");
 
   useEffect(() => {
     if (loading) return;
@@ -63,6 +65,8 @@ const StudentOnboarding = () => {
         open_to_mentor: openToMentor,
         looking_for_mentor_in: mentorTopic.trim() ? [mentorTopic.trim()] : [],
         onboarded: true,
+        discoverable,
+        profile_visibility: visibility,
       })
       .eq("id", user.id);
     if (error) { toast.error(error.message); return; }
@@ -74,9 +78,10 @@ const StudentOnboarding = () => {
   const canNext =
     step === 0 ? !!branch && !!year :
     step === 1 ? interests.length >= 3 :
+    step === 3 ? true :
     true;
 
-  const steps = ["Campus", "Interests", "Skills", "Mentorship"];
+  const steps = ["Campus", "Interests", "Skills", "Mentorship", "Privacy"];
 
   return (
     <div
@@ -165,9 +170,38 @@ const StudentOnboarding = () => {
           </div>
         )}
 
+        {step === 4 && (
+          <div className="mt-2 animate-fade-in-up">
+            <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /><h2 className="text-2xl font-bold">Your privacy</h2></div>
+            <p className="text-sm text-muted-foreground mt-1">By default your profile is private. You decide who finds you.</p>
+
+            <button onClick={() => setDiscoverable((v) => !v)} className={cn("mt-4 w-full p-4 rounded-2xl text-left transition-smooth", discoverable ? "bg-gradient-hero text-primary-foreground shadow-glow" : "bg-secondary")}>
+              <div className="flex items-center justify-between">
+                <span className="font-semibold">Appear in Discover</span>
+                {discoverable && <Check className="h-5 w-5" />}
+              </div>
+              <p className={cn("text-xs mt-1", discoverable ? "opacity-90" : "text-muted-foreground")}>Off by default. When on, other students can find you in interest-based search.</p>
+            </button>
+
+            <p className="text-xs font-semibold mt-4 mb-2">Who can view your profile</p>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { v: "public", icon: Globe, label: "Anyone" },
+                { v: "connections", icon: UsersIcon, label: "Connections" },
+                { v: "private", icon: Lock, label: "Only me" },
+              ] as const).map(({ v, icon: Icon, label }) => (
+                <button key={v} onClick={() => setVisibility(v)} className={cn("rounded-2xl border p-3 text-xs font-semibold flex flex-col items-center gap-1 transition-smooth", visibility === v ? "border-primary bg-primary text-primary-foreground" : "border-border bg-secondary text-secondary-foreground")}>
+                  <Icon className="h-4 w-4" /> {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-3">You can change these any time in Profile → Privacy.</p>
+          </div>
+        )}
+
         <div className="mt-6 flex gap-2">
           {step > 0 && <button onClick={back} className="px-4 py-3 rounded-2xl bg-secondary text-sm font-semibold">Back</button>}
-          {step < 3 ? (
+          {step < 4 ? (
             <button onClick={next} disabled={!canNext} className="flex-1 py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50 flex items-center justify-center gap-2">
               Continue <ArrowRight className="h-4 w-4" />
             </button>
