@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { PrivacySettings } from "@/components/privacy/PrivacySettings";
 import { ProfileViewsPanel } from "@/components/profile/ProfileViewsPanel";
+import { RecruiterVisibilityToggle } from "@/components/recruiter/RecruiterVisibilityToggle";
 
 const StudentProfile = () => {
   const navigate = useNavigate();
@@ -230,6 +231,10 @@ const StudentProfile = () => {
 
           <div className="mt-5">
             <PrivacySettings />
+          </div>
+
+          <div className="mt-5">
+            <RecruiterVisibilityToggle />
           </div>
 
           <div className="mt-5">
