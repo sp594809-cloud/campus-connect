@@ -28,11 +28,21 @@ const UserProfile = () => {
         .eq("id", id).maybeSingle();
       setP(data as PublicProfile | null);
       setLoading(false);
+      if (data && user && user.id !== id) {
+        supabase.rpc("log_profile_view", { _viewed: id, _source: "profile" }).then(() => {}, (e) => console.error("[log_profile_view]", e));
+      }
     })();
-  }, [id]);
+  }, [id, user?.id]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;
-  if (!p) return <div className="min-h-screen flex items-center justify-center text-sm">User not found</div>;
+  if (!p) return (
+    <div className="min-h-screen flex items-center justify-center text-sm text-center px-6">
+      <div>
+        <p className="font-semibold">Profile not available</p>
+        <p className="text-muted-foreground text-xs mt-1">This user's profile is private or restricted to connections.</p>
+      </div>
+    </div>
+  );
 
   const isMe = user?.id === p.id;
   const cs = stateWith(p.id).state;

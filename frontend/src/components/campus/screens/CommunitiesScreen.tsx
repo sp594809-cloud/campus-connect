@@ -314,8 +314,26 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
     if (!user || !draft.trim() || !canSend) return;
     const text = draft.trim().slice(0, 1000);
     setDraft("");
-    const { error } = await supabase.from("community_messages").insert({ community_id: community.id, sender_id: user.id, content: text });
+    const mod = await moderate(text, "community_messages", community.id);
+    if (mod.banned) {
+      toast.error("Your account has been suspended for a zero-tolerance violation.");
+      window.location.replace("/banned");
+      return;
+    }
+    if (mod.decision === "rejected") {
+      toast.error("Message blocked", { description: mod.reason ?? "Content violates community guidelines." });
+      return;
+    }
+    const { error } = await supabase.from("community_messages").insert({
+      community_id: community.id,
+      sender_id: user.id,
+      content: text,
+      moderation_status: mod.decision,
+      moderation_reason: mod.reason,
+      moderated_at: new Date().toISOString(),
+    } as any);
     if (error) toast.error(error.message);
+    else if (mod.decision === "shadow") toast.message("Submitted for review", { description: "Visible only to you until a moderator approves it." });
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
