@@ -582,6 +582,15 @@ export const MarketplaceScreen = () => {
                       <Trash2 className="h-3 w-3" />
                     </button>
                   )}
+                  {user?.id !== it.seller_id && (
+                    <button
+                      onClick={() => setReportListing(it)}
+                      aria-label="Report listing"
+                      className="ml-1 text-[11px] text-muted-foreground flex items-center gap-1 px-2 py-1 rounded-full hover:bg-destructive/10 hover:text-destructive transition-smooth"
+                    >
+                      <Flag className="h-3 w-3" />
+                    </button>
+                  )}
                 </div>
               </div>
             </article>
