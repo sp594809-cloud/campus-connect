@@ -264,10 +264,21 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
   const [showSettings, setShowSettings] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [reportMsg, setReportMsg] = useState<CMsg | null>(null);
+  const [actionMsg, setActionMsg] = useState<CMsg | null>(null);
+  const [moderatorId, setModeratorId] = useState<string | null>(community.moderator_id ?? null);
+  const [rules, setRules] = useState<string>(community.rules ?? "");
+  const [showRules, setShowRules] = useState(false);
+  const [editingRules, setEditingRules] = useState(false);
+  const [rulesDraft, setRulesDraft] = useState<string>(community.rules ?? "");
+  const [showMembers, setShowMembers] = useState(false);
+  const [members, setMembers] = useState<{ user_id: string; name: string; avatar_url: string | null }[]>([]);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const isAdmin = community.created_by === user?.id;
-  const canSend = isAdmin || !adminsOnly;
+  const isCreator = community.created_by === user?.id;
+  const isMod = !!user && (moderatorId === user.id || isCreator);
+  const canSend = isCreator || !adminsOnly;
 
   const load = async () => {
     const { data, error } = await supabase
@@ -294,7 +305,17 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
       .select("admins_only")
       .eq("id", community.id)
       .maybeSingle<{ admins_only: boolean }>();
-    if (c) setAdminsOnly(!!c.admins_only);
+    // refresh community meta (rules, moderator, admins_only)
+    const { data: c2 } = await supabase
+      .from("communities")
+      .select("admins_only, moderator_id, rules")
+      .eq("id", community.id)
+      .maybeSingle<{ admins_only: boolean; moderator_id: string | null; rules: string | null }>();
+    if (c2) {
+      setAdminsOnly(!!c2.admins_only);
+      setModeratorId(c2.moderator_id);
+      setRules(c2.rules ?? "");
+    }
   };
 
   useEffect(() => { load(); }, [community.id]);
@@ -376,6 +397,47 @@ const CommunityChat = ({ community, onBack }: { community: Community; onBack: ()
     setConfirmLeave(false);
     setShowSettings(false);
     onBack();
+  };
+
+  const removeMessage = async (m: CMsg) => {
+    const { error } = await supabase.rpc("delete_community_message", { _message_id: m.id });
+    if (error) { toast.error(error.message); return; }
+    setMsgs((prev) => prev.filter((x) => x.id !== m.id));
+    toast.success("Message removed");
+  };
+
+  const saveRules = async () => {
+    const next = rulesDraft.trim().slice(0, 4000);
+    const { error } = await supabase.rpc("update_community_rules", { _community_id: community.id, _rules: next });
+    if (error) { toast.error(error.message); return; }
+    setRules(next);
+    setEditingRules(false);
+    toast.success("Rules updated");
+  };
+
+  const loadMembers = async () => {
+    const { data } = await supabase.from("community_members").select("user_id").eq("community_id", community.id);
+    const ids = (data ?? []).map((m: { user_id: string }) => m.user_id);
+    if (!ids.length) { setMembers([]); return; }
+    const profs = await fetchProfilesByIds(ids).catch(() => [] as MiniProfile[]);
+    const pMap = new Map(profs.map((p) => [p.id, p]));
+    setMembers(ids.map((id) => ({ user_id: id, name: pMap.get(id)?.name ?? "Member", avatar_url: pMap.get(id)?.avatar_url ?? null })));
+  };
+
+  const removeMember = async (uid: string) => {
+    if (!confirm("Remove this member from the community?")) return;
+    const { error } = await supabase.rpc("remove_community_member", { _community_id: community.id, _user_id: uid });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Member removed");
+    loadMembers();
+  };
+
+  const transferMod = async (uid: string) => {
+    if (!confirm("Transfer the moderator role to this member? You'll no longer be the primary moderator.")) return;
+    const { error } = await supabase.rpc("transfer_community_moderator", { _community_id: community.id, _new_mod: uid });
+    if (error) { toast.error(error.message); return; }
+    setModeratorId(uid);
+    toast.success("Moderator transferred");
   };
 
   return (
