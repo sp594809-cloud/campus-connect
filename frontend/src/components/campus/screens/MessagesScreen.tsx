@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Flag, Send, Sparkles, Paperclip, FileText, Check, CheckCheck, X, Ban, Trash2, MoreVertical } from "lucide-react";
+import { ArrowLeft, Flag, Send, Sparkles, Paperclip, FileText, Check, CheckCheck, X, Ban, Trash2, MoreVertical, Shield } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Header } from "../Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -163,6 +164,7 @@ export const MessagesScreen = ({ openWith, onClearOpen }: { openWith: string | n
 
 const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProfile; onBack: () => void }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [draft, setDraft] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -259,6 +261,12 @@ const ChatView = ({ convId, other, onBack }: { convId: string; other: PublicProf
             <>
               <button aria-hidden className="fixed inset-0 z-40 cursor-default" onClick={() => setHeaderMenu(false)} />
               <div className="absolute right-0 top-11 z-50 bg-card border border-border rounded-2xl shadow-elevated overflow-hidden w-44">
+                <button
+                  onClick={() => { setHeaderMenu(false); navigate("/me#safety"); }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-secondary text-left"
+                >
+                  <Shield className="h-4 w-4" /> Privacy & Safety
+                </button>
                 <button
                   onClick={() => { setHeaderMenu(false); setConfirmBlock(true); }}
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 text-left"

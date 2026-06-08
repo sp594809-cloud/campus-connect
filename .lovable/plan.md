@@ -1,109 +1,52 @@
-# Plan: Safety, Reporting, Moderation, Recruiter Opt-in
+# Plan: Privacy & Safety hub at `/me`
 
-Four independent additions. Each is small enough to ship in one migration + a focused set of UI edits.
+Mount the already-built but unreachable components (`PrivacySettings`, `RecruiterVisibilityToggle`, `CodeOfConductDialog`) into a real Settings screen the avatar in the top bar already routes to.
 
----
+## What gets built
 
-## 1. Onboarding consent screen (hard gate)
+### 1. `/me` route → `MyProfile.tsx` (new page)
+Tabbed/sectioned profile + settings screen. Tabs: **Profile · Privacy & Safety · Reports · Account**.
 
-**DB**
-- Add to `profiles`:
-  - `consent_acknowledged boolean not null default false`
-  - `consent_acknowledged_at timestamptz`
+- Wire `CampusApp.tsx` avatar button (already navigates to `/me`) to this new page.
+- Add route in `frontend/src/App.tsx`.
 
-**Frontend**
-- New step in `StudentOnboarding.tsx` as the **final** step (after enrollment verify + college auto-fill).
-- Full-screen layout (not a Dialog): heading, the exact disclosure copy, single required checkbox, "Enter CampusOS" button disabled until checked.
-- On submit: update `profiles` with `consent_acknowledged = true`, `consent_acknowledged_at = now()`, then route to `/campus`.
-- **Global guard**: in `AuthContext` (or a `ConsentGuard` wrapper around protected routes), after loading the session+profile, if `consent_acknowledged !== true` and the user is not already on `/onboarding`, redirect to `/onboarding` at the consent step. Applies to every route except `/auth`, `/onboarding`, `/banned`.
+### 2. Privacy & Safety section
+Stacks four cards:
 
----
+1. **Recruiter visibility** — render existing `<RecruiterVisibilityToggle />`. Includes the opt-in explainer + immediate toggle.
+2. **Privacy controls** — render existing `<PrivacySettings />` (profile visibility, who can DM, profile-view tracking).
+3. **Blocked users** — new small component `BlockedUsersList.tsx`:
+   - Reads `user_blocks` where `blocker_id = auth.uid()` joined to `profiles` (name, avatar).
+   - Each row has an **Unblock** button (deletes the `user_blocks` row).
+   - Empty state: "You haven't blocked anyone."
+4. **Community Code of Conduct** — button that opens the existing `<CodeOfConductDialog />` in read-only mode.
 
-## 2. Universal report flow
+### 3. Reports section
+New small component `MyReportsList.tsx`:
+- Lists rows from `reports` where `reporter_id = auth.uid()`, newest first.
+- Shows content type, reason, status badge (pending / reviewed / actioned / dismissed), timestamp.
+- Empty state: "No reports filed."
 
-**DB** — new `reports` table:
-- `reporter_id uuid` (auth.uid)
-- `reported_user_id uuid`
-- `content_type text` check in (`'post'`,`'message'`,`'listing'`)
-- `content_id uuid`
-- `reason text` check in (`'harassment'`,`'inappropriate'`,`'misinformation'`,`'scam'`,`'other'`)
-- `details text` (optional free text)
-- `status text` default `'pending'` check in (`'pending'`,`'reviewed'`,`'actioned'`,`'dismissed'`)
-- `created_at`, `reviewed_at`, `reviewed_by`
-- RLS: authenticated can INSERT their own report; SELECT only by self or `has_role(uid,'admin')`; UPDATE only admin.
-- GRANTs to `authenticated` and `service_role`.
+### 4. Account section
+- Sign out button (existing `AuthContext.signOut`).
+- Link back to onboarding consent text (read-only).
 
-**Frontend**
-- New shared `<ReportSheet />` component (bottom sheet) — props: `contentType`, `contentId`, `reportedUserId`. 5 chips + textarea + submit.
-- Wire-up:
-  - **Posts** (`HomeScreen`, community post cards, `interview_experiences` cards): add three-dot menu → "Report this post".
-  - **Marketplace listings** (`MarketplaceScreen` cards + detail): same three-dot menu → "Report this listing".
-  - **Messages** (`MessagesScreen` chat bubbles + community chat bubbles): long-press handler (touch) / right-click (desktop) → "Report message".
-- Toast on success. Disable submit while pending. Block duplicate reports per `(reporter_id, content_type, content_id)` via unique index.
+### 5. Secondary entry points
+- **Chat header** (`MessagesScreen` 1-1 view): add small shield icon → `navigate('/me?tab=safety')`.
+- `MyProfile` reads `?tab=` query param to auto-select tab.
 
-**Admin view** (lightweight, this pass)
-- New route `/admin/reports` gated by `has_role(uid,'admin')`.
-- Table of pending reports with reporter, reported user, content type, reason, timestamp, and a "View content" link that deep-links to the post/listing/message context. Status change buttons: Dismiss / Mark actioned.
+## Files
 
----
-
-## 3. Community moderator tools
-
-**DB**
-- Add `moderator_id uuid` to `communities` (nullable for legacy rows; backfill with `created_by`).
-- Keep existing `community_moderators` table as additional mods; `moderator_id` is the **primary** moderator (transferable).
-- RPCs (SECURITY DEFINER, search_path = public):
-  - `delete_community_post(_post_id uuid)` — verifies `auth.uid()` is primary `moderator_id` or in `community_moderators` for that community, then deletes the post.
-  - `remove_community_member(_community_id uuid, _user_id uuid)` — same check, removes the `community_members` row. Cannot remove the primary moderator.
-  - `transfer_community_moderator(_community_id uuid, _new_mod uuid)` — only callable by current `moderator_id`; new mod must be a member.
-- Trigger `on_community_created`: when a row is inserted into `communities`, also insert a pinned post into `posts` with `community_id`, `pinned = true` (add `pinned boolean default false` to `posts`), title "Community Rules", default body template. Author = `created_by`.
-
-**Frontend**
-- `CommunityDetail` view:
-  - Pinned Rules card at the top (visible to everyone). Edit button shown only to moderator → opens editor that updates the post body.
-  - On each post card (when viewer is moderator): "Remove post" action in the three-dot menu → calls `delete_community_post`.
-  - In members list (when viewer is moderator): "Remove member" action → calls `remove_community_member` with confirm dialog.
-  - Settings tab (moderator only): "Transfer moderator" picker (members list) → `transfer_community_moderator`.
-
----
-
-## 4. Recruiter opt-in toggle
-
-**DB**
-- Add `recruiter_visible boolean not null default false` to `profiles`.
-
-**Frontend**
-- `/me` Settings → new "Visibility" section with a `<Switch>` "Visible to recruiters" (off by default).
-  - On enable: show explainer card with the exact copy from the brief and a Confirm button before persisting.
-  - Toggle is reversible; immediate write.
-- Recruiter dashboard (`/recruiter/*` candidate queries): add `.eq('recruiter_visible', true)` to every list/search query. Single profile pages accessed via direct URL also gated — if `recruiter_visible = false`, show empty state.
-
----
-
-## Files touched
-
-**Migrations (4, in order)**
-1. `profiles.consent_acknowledged` + `consent_acknowledged_at`
-2. `reports` table + RLS + unique index
-3. `communities.moderator_id` + `posts.pinned` + RPCs + trigger + backfill
-4. `profiles.recruiter_visible`
-
-**New components/routes**
-- `ConsentStep.tsx` (in onboarding)
-- `ConsentGuard` in `AuthContext`/router
-- `ReportSheet.tsx`, `useReport.ts`
-- `AdminReportsScreen.tsx` + route `/admin/reports`
-- `CommunityRulesCard.tsx`, `ModeratorActionsMenu.tsx`, `TransferModeratorDialog.tsx`
-- `RecruiterVisibilityToggle.tsx`
+**New**
+- `frontend/src/pages/MyProfile.tsx`
+- `frontend/src/components/safety/BlockedUsersList.tsx`
+- `frontend/src/components/safety/MyReportsList.tsx`
 
 **Edited**
-- `StudentOnboarding.tsx`, `AuthContext.tsx`, `App.tsx` (routes)
-- `HomeScreen.tsx`, `MarketplaceScreen.tsx`, `MessagesScreen.tsx`, community chat + community detail screens, `InterviewFeed` card
-- `MyProfile` / `/me` settings
-- Recruiter dashboard query files
+- `frontend/src/App.tsx` — add `/me` route
+- `frontend/src/components/campus/screens/MessagesScreen.tsx` — add shield icon link in 1-1 chat header
 
 ## Out of scope
-- AI auto-moderation of reports (admin reviews manually)
-- Email/push notifications to moderators on report submission
-- Recruiter verification flow (assumed handled elsewhere)
-- Appeals workflow for removed members/posts
+- No DB schema changes (all tables already exist: `user_blocks`, `reports`, `profiles.recruiter_visible`, etc.)
+- No new RLS policies needed
+- No admin tooling changes (admin reports view already at `/admin/reports`)
