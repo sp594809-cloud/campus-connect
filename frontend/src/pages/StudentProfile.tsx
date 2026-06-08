@@ -9,6 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { PrivacySettings } from "@/components/privacy/PrivacySettings";
 import { ProfileViewsPanel } from "@/components/profile/ProfileViewsPanel";
 import { RecruiterVisibilityToggle } from "@/components/recruiter/RecruiterVisibilityToggle";
+import { BlockedUsersList } from "@/components/safety/BlockedUsersList";
+import { MyReportsList } from "@/components/safety/MyReportsList";
 
 const StudentProfile = () => {
   const navigate = useNavigate();
@@ -21,6 +23,18 @@ const StudentProfile = () => {
     if (loading) return;
     if (!user) navigate("/", { replace: true });
   }, [user, loading, navigate]);
+
+  // Deep-link support: /me#safety scrolls into the safety section.
+  useEffect(() => {
+    if (loading || !profile) return;
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash.replace("#", "");
+    if (!hash) return;
+    requestAnimationFrame(() => {
+      const el = document.getElementById(hash);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [loading, profile]);
 
   if (loading || !user || !profile) {
     return (
@@ -239,6 +253,15 @@ const StudentProfile = () => {
 
           <div className="mt-5">
             <ProfileViewsPanel />
+          </div>
+
+          <div id="safety" className="mt-8 space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Safety</h2>
+            </div>
+            <BlockedUsersList />
+            <MyReportsList />
           </div>
 
           <button
