@@ -27,15 +27,3 @@ export interface MiniProfile {
   branch?: string | null;
   year?: string | null;
 }
-
-// Connection types
-export type ConnState = "none" | "pending_out" | "pending_in" | "accepted" | "declined";
-
-export interface ConnRow {
-  id: string;
-  requester_id: string;
-  recipient_id: string;
-  status: "pending" | "accepted" | "declined";
-  message: string;
-  created_at: string;
-}

@@ -33,7 +33,6 @@ export interface Profile {
   views_incognito?: boolean;
   consent_acknowledged?: boolean;
   consent_acknowledged_at?: string | null;
-  recruiter_visible?: boolean;
 }
 
 interface AuthCtx {
