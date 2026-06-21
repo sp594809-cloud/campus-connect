@@ -1,23 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Briefcase, Check, Clock, GraduationCap, MessageCircle, ShieldCheck, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Briefcase, GraduationCap, MessageCircle, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { avatarFor, type PublicProfile } from "@/hooks/useProfiles";
-import { useConnections } from "@/hooks/useConnections";
 import { InterestChip } from "@/components/campus/InterestChip";
-import { toast } from "sonner";
 
 const UserProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { stateWith, reload } = useConnections();
   const [p, setP] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showReq, setShowReq] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -39,34 +33,15 @@ const UserProfile = () => {
     <div className="min-h-screen flex items-center justify-center text-sm text-center px-6">
       <div>
         <p className="font-semibold">Profile not available</p>
-        <p className="text-muted-foreground text-xs mt-1">This user's profile is private or restricted to connections.</p>
+        <p className="text-muted-foreground text-xs mt-1">This user's profile is private.</p>
       </div>
     </div>
   );
 
   const isMe = user?.id === p.id;
-  const cs = stateWith(p.id).state;
-
-  const send = async () => {
-    if (!user) return;
-    setSending(true);
-    const message = msg.trim().slice(0, 280);
-    let { error } = await supabase.from("connection_requests").insert({ requester_id: user.id, recipient_id: p.id, message });
-    if (error && (error.code === "23505" || /duplicate/i.test(error.message))) {
-      // Remove stale row (declined/pending) then re-insert
-      await supabase.from("connection_requests").delete()
-        .or(`and(requester_id.eq.${user.id},recipient_id.eq.${p.id}),and(requester_id.eq.${p.id},recipient_id.eq.${user.id})`);
-      const retry = await supabase.from("connection_requests").insert({ requester_id: user.id, recipient_id: p.id, message });
-      error = retry.error;
-    }
-    setSending(false);
-    if (error) return toast.error(error.message);
-    toast.success("Request sent!");
-    setShowReq(false); setMsg(""); reload();
-  };
 
   const startChat = async () => {
-    if (cs !== "accepted") { toast.error("Connect first to chat."); return; }
+    if (!user) return;
     await supabase.rpc("get_or_create_conversation", { other_user: p.id });
     navigate("/campus");
   };
@@ -99,15 +74,7 @@ const UserProfile = () => {
 
           {!isMe && (
             <div className="mt-4 flex gap-2">
-              {cs === "accepted" ? (
-                <button onClick={startChat} className="flex-1 bg-gradient-hero text-primary-foreground py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 shadow-glow"><MessageCircle className="h-4 w-4" /> Message</button>
-              ) : cs === "pending_out" ? (
-                <button disabled className="flex-1 bg-secondary text-secondary-foreground py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2"><Clock className="h-4 w-4" /> Request sent</button>
-              ) : cs === "pending_in" ? (
-                <button disabled className="flex-1 bg-accent-soft text-accent py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2"><Check className="h-4 w-4" /> Open 🔔 to respond</button>
-              ) : (
-                <button onClick={() => setShowReq(true)} className="flex-1 bg-gradient-hero text-primary-foreground py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 shadow-glow"><Sparkles className="h-4 w-4" /> Connect</button>
-              )}
+              <button onClick={startChat} className="flex-1 bg-gradient-hero text-primary-foreground py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 shadow-glow"><MessageCircle className="h-4 w-4" /> Message</button>
             </div>
           )}
 
@@ -125,19 +92,6 @@ const UserProfile = () => {
           )}
         </div>
       </div>
-
-      {showReq && (
-        <div className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" onClick={() => setShowReq(false)}>
-          <div className="bg-card rounded-3xl p-5 w-full max-w-md shadow-elevated" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold">Send connection request</h3>
-              <button onClick={() => setShowReq(false)} aria-label="Close" className="h-8 w-8 rounded-full hover:bg-secondary flex items-center justify-center"><X className="h-4 w-4" /></button>
-            </div>
-            <textarea value={msg} onChange={(e) => setMsg(e.target.value.slice(0, 280))} rows={4} placeholder="Why do you want to connect?" className="w-full px-4 py-3 rounded-2xl bg-secondary text-sm focus:outline-none resize-none" />
-            <button onClick={send} disabled={sending} className="w-full mt-3 py-3 rounded-2xl bg-gradient-hero text-primary-foreground font-semibold text-sm shadow-glow disabled:opacity-50">{sending ? "Sending…" : "Send request"}</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
