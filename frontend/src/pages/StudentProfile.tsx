@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Award, Camera, Copy, Check, Globe, GraduationCap, Hash, Loader2, LogOut, ShieldCheck, Sparkles, Target, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Award, Camera, GraduationCap, Hash, Loader2, LogOut, ShieldAlert, ShieldCheck, Sparkles, Target, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { InterestChip } from "@/components/campus/InterestChip";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,16 +8,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { PrivacySettings } from "@/components/privacy/PrivacySettings";
 import { ProfileViewsPanel } from "@/components/profile/ProfileViewsPanel";
-import { RecruiterVisibilityToggle } from "@/components/recruiter/RecruiterVisibilityToggle";
 import { BlockedUsersList } from "@/components/safety/BlockedUsersList";
 import { MyReportsList } from "@/components/safety/MyReportsList";
+import { useStaffRole } from "@/hooks/useRole";
 
 const StudentProfile = () => {
   const navigate = useNavigate();
   const { user, profile, loading, refreshProfile, signOut } = useAuth();
   const [uploading, setUploading] = useState(false);
-  const [copied, setCopied] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { isStaff } = useStaffRole();
 
   useEffect(() => {
     if (loading) return;
@@ -102,20 +102,6 @@ const StudentProfile = () => {
     finally { setUploading(false); }
   };
 
-  const passportSlug = profile.username || user.id;
-  const passportUrl = `${window.location.origin}/passport/${passportSlug}`;
-
-  const copyPassportUrl = async () => {
-    try {
-      await navigator.clipboard.writeText(passportUrl);
-      setCopied(true);
-      toast.success("Passport URL copied to clipboard!");
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Could not copy URL");
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary via-background to-accent-soft">
       <div className="mx-auto max-w-md min-h-screen bg-background relative shadow-elevated">
@@ -186,32 +172,6 @@ const StudentProfile = () => {
             <span className="text-lg font-black text-accent">{profile.karma_total ?? 0}</span>
           </button>
 
-          <div className="mt-4 rounded-2xl border border-primary/30 bg-gradient-card p-4">
-            <div className="flex items-center gap-3">
-              <Globe className="h-5 w-5 text-primary" />
-              <div className="flex-1">
-                <p className="font-bold text-sm">Public Passport</p>
-                <p className="text-[11px] text-muted-foreground">Preview & share your career portfolio</p>
-              </div>
-              <button
-                onClick={() => navigate(`/passport/${passportSlug}`)}
-                className="px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-smooth"
-              >
-                View
-              </button>
-            </div>
-            <div className="mt-3 flex items-center gap-2 rounded-xl bg-secondary px-3 py-2">
-              <span className="text-[11px] text-muted-foreground truncate flex-1">{passportUrl}</span>
-              <button
-                onClick={copyPassportUrl}
-                aria-label="Copy passport URL"
-                className="shrink-0 h-7 w-7 rounded-lg bg-background border border-border flex items-center justify-center hover:bg-muted transition-smooth"
-              >
-                {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
-              </button>
-            </div>
-          </div>
-
           <div className="mt-5 rounded-2xl border border-border bg-card p-4">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Sparkles className="h-4 w-4 text-accent" /> Open to mentor: {profile.open_to_mentor ? "Yes" : "No"}
@@ -248,10 +208,6 @@ const StudentProfile = () => {
           </div>
 
           <div className="mt-5">
-            <RecruiterVisibilityToggle />
-          </div>
-
-          <div className="mt-5">
             <ProfileViewsPanel />
           </div>
 
@@ -262,6 +218,18 @@ const StudentProfile = () => {
             </div>
             <BlockedUsersList />
             <MyReportsList />
+            {isStaff && (
+              <button
+                onClick={() => navigate("/admin/moderation")}
+                className="w-full rounded-2xl border border-primary/40 bg-primary/5 p-4 flex items-center gap-3 hover:bg-primary/10 transition-smooth"
+              >
+                <ShieldAlert className="h-5 w-5 text-primary" />
+                <div className="flex-1 text-left">
+                  <p className="font-bold text-sm">Moderation dashboard</p>
+                  <p className="text-[11px] text-muted-foreground">Review reports, hide content, manage bans &amp; roles</p>
+                </div>
+              </button>
+            )}
           </div>
 
           <button

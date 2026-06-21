@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Copy, Link2, MessageCircle, Send, Share2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useConnections } from "@/hooks/useConnections";
 import { avatarFor } from "@/hooks/useProfiles";
 import { fetchProfilesByIds, type MiniProfile } from "@/lib/api/profiles";
 import { toast } from "sonner";
@@ -17,28 +16,30 @@ interface Props {
 
 export const ShareDrawer = ({ open, onClose, title, url, preview }: Props) => {
   const { user } = useAuth();
-  const { rows } = useConnections();
   const [recents, setRecents] = useState<MiniProfile[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !user) return;
-    const otherIds = rows
-      .filter((r) => r.status === "accepted")
-      .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
-      .slice(0, 12)
-      .map((r) => (r.requester_id === user.id ? r.recipient_id : r.requester_id));
-    if (otherIds.length === 0) { setRecents([]); return; }
     let alive = true;
-    fetchProfilesByIds(otherIds)
-      .then((data) => {
-        if (!alive) return;
-        const map = new Map(data.map((p) => [p.id, p]));
-        setRecents(otherIds.map((id) => map.get(id)).filter(Boolean) as MiniProfile[]);
-      })
-      .catch((err) => console.error("[ShareDrawer] profiles", err));
+    (async () => {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("user_a,user_b,last_message_at")
+        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(12);
+      if (error || !data) return;
+      const otherIds = (data as { user_a: string; user_b: string }[])
+        .map((c) => (c.user_a === user.id ? c.user_b : c.user_a));
+      if (!otherIds.length) { if (alive) setRecents([]); return; }
+      const profiles = await fetchProfilesByIds(otherIds);
+      if (!alive) return;
+      const map = new Map(profiles.map((p) => [p.id, p]));
+      setRecents(otherIds.map((id) => map.get(id)).filter(Boolean) as MiniProfile[]);
+    })().catch((err) => console.error("[ShareDrawer] recents", err));
     return () => { alive = false; };
-  }, [open, user, rows]);
+  }, [open, user]);
 
   if (!open) return null;
 
@@ -99,10 +100,10 @@ export const ShareDrawer = ({ open, onClose, title, url, preview }: Props) => {
           </button>
         </div>
 
-        {/* Recent Connections */}
-        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Recent connections</p>
+        {/* Recent chats */}
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Recent chats</p>
         {recents.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-3">Connect with classmates to share posts directly.</p>
+          <p className="text-xs text-muted-foreground py-3">Start a chat with classmates to share posts directly.</p>
         ) : (
           <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
             {recents.map((p) => (

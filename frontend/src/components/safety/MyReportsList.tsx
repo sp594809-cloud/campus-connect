@@ -12,6 +12,8 @@ interface ReportRow {
   reason: string;
   status: string;
   created_at: string;
+  resolution_note?: string | null;
+  reviewed_at?: string | null;
 }
 
 const statusStyles: Record<string, string> = {
@@ -32,7 +34,7 @@ export const MyReportsList = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("reports")
-        .select("id, content_type, reason, status, created_at")
+        .select("id, content_type, reason, status, created_at, resolution_note, reviewed_at")
         .eq("reporter_id", user.id)
         .order("created_at", { ascending: false })
         .limit(50);
@@ -54,14 +56,19 @@ export const MyReportsList = () => {
       )}
       <div className="space-y-2">
         {rows.map((r) => (
-          <div key={r.id} className="flex items-center gap-3 p-3 rounded-2xl bg-secondary">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold capitalize truncate">{r.content_type} · {r.reason}</p>
-              <p className="text-[11px] text-muted-foreground">{formatDistanceToNow(new Date(r.created_at), { addSuffix: true })}</p>
+          <div key={r.id} className="p-3 rounded-2xl bg-secondary space-y-1">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold capitalize truncate">{r.content_type} · {r.reason}</p>
+                <p className="text-[11px] text-muted-foreground">{formatDistanceToNow(new Date(r.created_at), { addSuffix: true })}</p>
+              </div>
+              <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold uppercase", statusStyles[r.status] ?? "bg-muted text-muted-foreground")}>
+                {r.status}
+              </span>
             </div>
-            <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold uppercase", statusStyles[r.status] ?? "bg-muted text-muted-foreground")}>
-              {r.status}
-            </span>
+            {r.resolution_note && (
+              <p className="text-[11px] text-muted-foreground italic pl-1">Moderator: {r.resolution_note}</p>
+            )}
           </div>
         ))}
       </div>

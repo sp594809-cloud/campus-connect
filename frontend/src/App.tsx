@@ -22,10 +22,8 @@ const InterviewExperienceDetail = lazy(() => import("./pages/InterviewExperience
 const InterviewCompare = lazy(() => import("./pages/InterviewCompare.tsx"));
 const MentorDirectory = lazy(() => import("./pages/MentorDirectory.tsx"));
 const Karma = lazy(() => import("./pages/Karma.tsx"));
-const Passport = lazy(() => import("./pages/Passport.tsx"));
-const RecruiterDashboard = lazy(() => import("./pages/RecruiterDashboard.tsx"));
-const RecruiterStudentDetail = lazy(() => import("./pages/RecruiterStudentDetail.tsx"));
 const CompanyDetailScreen = lazy(() => import("./components/campus/screens/CompanyDetailScreen.tsx"));
+const AdminModeration = lazy(() => import("./pages/AdminModeration.tsx"));
 const Banned = lazy(() => import("./pages/Banned.tsx"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -66,10 +64,8 @@ const App = () => (
             <Route path="/interview/:id" element={<InterviewExperienceDetail />} />
             <Route path="/mentors" element={<MentorDirectory />} />
             <Route path="/karma" element={<Karma />} />
-            <Route path="/passport/:slug" element={<Passport />} />
-            <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
-            <Route path="/recruiter/student/:id" element={<RecruiterStudentDetail />} />
             <Route path="/companies/:name" element={<CompanyDetailScreen />} />
+            <Route path="/admin/moderation" element={<AdminModeration />} />
             <Route path="/banned" element={<Banned />} />
             <Route path="/app" element={<Navigate to="/campus" replace />} />
               <Route path="*" element={<NotFound />} />

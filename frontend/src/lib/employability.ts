@@ -1,5 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
-
 export interface EmployabilityData {
   karma_total: number;
   current_streak: number;
@@ -48,20 +46,3 @@ export const CATEGORY_COLOR: Record<string, string> = {
   marketplace_contribution: "hsl(280 80% 60%)",
   community_help: "hsl(200 70% 50%)",
 };
-
-export async function fetchPassportData(profileId: string) {
-  const [karma, streak, completions, posts, interviews] = await Promise.all([
-    supabase.from("karma_events").select("action,points,created_at,note").eq("user_id", profileId).order("created_at", { ascending: false }).limit(2000),
-    supabase.from("dsa_streaks").select("current_streak,longest_streak,total_completed,last_completed_date").eq("user_id", profileId).maybeSingle(),
-    supabase.from("dsa_completions").select("completed_on").eq("user_id", profileId).order("completed_on", { ascending: false }).limit(400),
-    supabase.from("posts").select("id,type,content,tag,created_at,attachment_url,attachment_type").eq("author_id", profileId).order("created_at", { ascending: false }).limit(50),
-    supabase.from("interview_experiences").select("id,company_name,role,outcome,interview_year,interview_month,created_at").eq("author_id", profileId).order("created_at", { ascending: false }).limit(50),
-  ]);
-  return {
-    karma: karma.data ?? [],
-    streak: streak.data ?? null,
-    completions: completions.data ?? [],
-    posts: posts.data ?? [],
-    interviews: interviews.data ?? [],
-  };
-}
