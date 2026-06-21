@@ -262,6 +262,8 @@ export type Database = {
           community_id: string
           content: string | null
           created_at: string
+          hidden_at: string | null
+          hidden_reason: string | null
           id: string
           moderated_at: string | null
           moderation_reason: string | null
@@ -274,6 +276,8 @@ export type Database = {
           community_id: string
           content?: string | null
           created_at?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
           moderated_at?: string | null
           moderation_reason?: string | null
@@ -286,6 +290,8 @@ export type Database = {
           community_id?: string
           content?: string | null
           created_at?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
           moderated_at?: string | null
           moderation_reason?: string | null
@@ -423,79 +429,6 @@ export type Database = {
           name?: string
         }
         Relationships: []
-      }
-      connection_requests: {
-        Row: {
-          created_at: string
-          id: string
-          message: string
-          recipient_id: string
-          requester_id: string
-          status: Database["public"]["Enums"]["connection_status"]
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          message?: string
-          recipient_id: string
-          requester_id: string
-          status?: Database["public"]["Enums"]["connection_status"]
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          message?: string
-          recipient_id?: string
-          requester_id?: string
-          status?: Database["public"]["Enums"]["connection_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "connection_requests_recipient_id_fkey"
-            columns: ["recipient_id"]
-            isOneToOne: false
-            referencedRelation: "employability_score_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "connection_requests_recipient_id_fkey"
-            columns: ["recipient_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "connection_requests_recipient_id_fkey"
-            columns: ["recipient_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "connection_requests_requester_id_fkey"
-            columns: ["requester_id"]
-            isOneToOne: false
-            referencedRelation: "employability_score_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "connection_requests_requester_id_fkey"
-            columns: ["requester_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "connection_requests_requester_id_fkey"
-            columns: ["requester_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       conversations: {
         Row: {
@@ -999,6 +932,8 @@ export type Database = {
           category: string
           created_at: string
           description: string
+          hidden_at: string | null
+          hidden_reason: string | null
           id: string
           image_url: string | null
           price: number
@@ -1011,6 +946,8 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
           image_url?: string | null
           price?: number
@@ -1023,6 +960,8 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
           image_url?: string | null
           price?: number
@@ -1202,6 +1141,8 @@ export type Database = {
           content: string | null
           conversation_id: string
           created_at: string
+          hidden_at: string | null
+          hidden_reason: string | null
           id: string
           read: boolean
           sender_id: string
@@ -1212,6 +1153,8 @@ export type Database = {
           content?: string | null
           conversation_id: string
           created_at?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
           read?: boolean
           sender_id: string
@@ -1222,6 +1165,8 @@ export type Database = {
           content?: string | null
           conversation_id?: string
           created_at?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
           read?: boolean
           sender_id?: string
@@ -1455,6 +1400,8 @@ export type Database = {
           author_id: string
           content: string
           created_at: string
+          hidden_at: string | null
+          hidden_reason: string | null
           id: string
           moderated_at: string | null
           moderation_reason: string | null
@@ -1469,6 +1416,8 @@ export type Database = {
           author_id: string
           content: string
           created_at?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
           moderated_at?: string | null
           moderation_reason?: string | null
@@ -1483,6 +1432,8 @@ export type Database = {
           author_id?: string
           content?: string
           created_at?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
           moderated_at?: string | null
           moderation_reason?: string | null
@@ -1693,140 +1644,6 @@ export type Database = {
         }
         Relationships: []
       }
-      recruiter_notes: {
-        Row: {
-          created_at: string
-          id: string
-          note: string
-          recruiter_id: string
-          student_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          note?: string
-          recruiter_id: string
-          student_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          note?: string
-          recruiter_id?: string
-          student_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "recruiter_notes_recruiter_id_fkey"
-            columns: ["recruiter_id"]
-            isOneToOne: false
-            referencedRelation: "employability_score_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_notes_recruiter_id_fkey"
-            columns: ["recruiter_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_notes_recruiter_id_fkey"
-            columns: ["recruiter_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_notes_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "employability_score_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_notes_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_notes_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      recruiter_saved_candidates: {
-        Row: {
-          created_at: string
-          id: string
-          recruiter_id: string
-          shortlisted: boolean
-          student_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          recruiter_id: string
-          shortlisted?: boolean
-          student_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          recruiter_id?: string
-          shortlisted?: boolean
-          student_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "recruiter_saved_candidates_recruiter_id_fkey"
-            columns: ["recruiter_id"]
-            isOneToOne: false
-            referencedRelation: "employability_score_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_saved_candidates_recruiter_id_fkey"
-            columns: ["recruiter_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_saved_candidates_recruiter_id_fkey"
-            columns: ["recruiter_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_saved_candidates_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "employability_score_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_saved_candidates_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_saved_candidates_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_public"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       registered_phones: {
         Row: {
           enrollment_id: string
@@ -1858,6 +1675,7 @@ export type Database = {
           reason: string
           reported_user_id: string | null
           reporter_id: string
+          resolution_note: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
@@ -1871,6 +1689,7 @@ export type Database = {
           reason: string
           reported_user_id?: string | null
           reporter_id: string
+          resolution_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
@@ -1884,6 +1703,7 @@ export type Database = {
           reason?: string
           reported_user_id?: string | null
           reporter_id?: string
+          resolution_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
@@ -2447,7 +2267,6 @@ export type Database = {
       }
     }
     Functions: {
-      are_connected: { Args: { a: string; b: string }; Returns: boolean }
       cleanup_expired_otp_codes: { Args: never; Returns: number }
       delete_community_message: {
         Args: { _message_id: string }
