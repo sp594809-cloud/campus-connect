@@ -1,8 +1,11 @@
 import type { Config } from "tailwindcss";
+import path from "path";
+
+const here = (p: string) => path.join(__dirname, p);
 
 export default {
   darkMode: ["class"],
-  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  content: [here("./pages/**/*.{ts,tsx}"), here("./components/**/*.{ts,tsx}"), here("./app/**/*.{ts,tsx}"), here("./src/**/*.{ts,tsx}"), here("./index.html")],
   prefix: "",
   theme: {
     container: {
