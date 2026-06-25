@@ -49,7 +49,7 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success("Welcome to Campus Connect! 🎉");
+        toast.success("Check your email to verify your account ✉️");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
