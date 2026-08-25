@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      banned_terms: {
+        Row: {
+          category: string
+          created_at: string
+          severity: string
+          term: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          severity?: string
+          term: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          severity?: string
+          term?: string
+        }
+        Relationships: []
+      }
       college_roster: {
         Row: {
           branch: string | null
@@ -54,7 +75,9 @@ export type Database = {
           emoji: string
           id: string
           interest: string
+          moderator_id: string | null
           name: string
+          rules: string | null
         }
         Insert: {
           admins_only?: boolean
@@ -65,7 +88,9 @@ export type Database = {
           emoji?: string
           id?: string
           interest: string
+          moderator_id?: string | null
           name: string
+          rules?: string | null
         }
         Update: {
           admins_only?: boolean
@@ -76,7 +101,9 @@ export type Database = {
           emoji?: string
           id?: string
           interest?: string
+          moderator_id?: string | null
           name?: string
+          rules?: string | null
         }
         Relationships: [
           {
@@ -91,6 +118,92 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_coc_acceptances: {
+        Row: {
+          accepted_at: string
+          community_id: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          accepted_at?: string
+          community_id: string
+          user_id: string
+          version: number
+        }
+        Update: {
+          accepted_at?: string
+          community_id?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_coc_acceptances_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_coc_acceptances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_coc_acceptances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_coc_acceptances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_code_of_conduct: {
+        Row: {
+          community_id: string
+          content_md: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          community_id: string
+          content_md: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          community_id?: string
+          content_md?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_code_of_conduct_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: true
+            referencedRelation: "communities"
             referencedColumns: ["id"]
           },
         ]
@@ -133,6 +246,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "community_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       community_messages: {
@@ -142,7 +262,12 @@ export type Database = {
           community_id: string
           content: string | null
           created_at: string
+          hidden_at: string | null
+          hidden_reason: string | null
           id: string
+          moderated_at: string | null
+          moderation_reason: string | null
+          moderation_status: Database["public"]["Enums"]["moderation_status"]
           sender_id: string
         }
         Insert: {
@@ -151,7 +276,12 @@ export type Database = {
           community_id: string
           content?: string | null
           created_at?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
+          moderated_at?: string | null
+          moderation_reason?: string | null
+          moderation_status?: Database["public"]["Enums"]["moderation_status"]
           sender_id: string
         }
         Update: {
@@ -160,7 +290,12 @@ export type Database = {
           community_id?: string
           content?: string | null
           created_at?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
+          moderated_at?: string | null
+          moderation_reason?: string | null
+          moderation_status?: Database["public"]["Enums"]["moderation_status"]
           sender_id?: string
         }
         Relationships: [
@@ -183,6 +318,87 @@ export type Database = {
             columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_moderators: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          community_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          community_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          community_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_moderators_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_moderators_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_moderators_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_moderators_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_moderators_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_moderators_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_moderators_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -213,65 +429,6 @@ export type Database = {
           name?: string
         }
         Relationships: []
-      }
-      connection_requests: {
-        Row: {
-          created_at: string
-          id: string
-          message: string
-          recipient_id: string
-          requester_id: string
-          status: Database["public"]["Enums"]["connection_status"]
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          message?: string
-          recipient_id: string
-          requester_id: string
-          status?: Database["public"]["Enums"]["connection_status"]
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          message?: string
-          recipient_id?: string
-          requester_id?: string
-          status?: Database["public"]["Enums"]["connection_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "connection_requests_recipient_id_fkey"
-            columns: ["recipient_id"]
-            isOneToOne: false
-            referencedRelation: "employability_score_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "connection_requests_recipient_id_fkey"
-            columns: ["recipient_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "connection_requests_requester_id_fkey"
-            columns: ["requester_id"]
-            isOneToOne: false
-            referencedRelation: "employability_score_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "connection_requests_requester_id_fkey"
-            columns: ["requester_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       conversations: {
         Row: {
@@ -311,6 +468,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "conversations_user_a_fkey"
+            columns: ["user_a"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "conversations_user_b_fkey"
             columns: ["user_b"]
             isOneToOne: false
@@ -324,51 +488,11 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      daily_tasks: {
-        Row: {
-          created_at: string
-          day_number: number
-          difficulty: string
-          exercise_prompt: string
-          expected_answer_summary: string
-          id: string
-          plan_id: string
-          question: string
-          source_url: string
-          topic_title: string
-        }
-        Insert: {
-          created_at?: string
-          day_number: number
-          difficulty?: string
-          exercise_prompt: string
-          expected_answer_summary?: string
-          id?: string
-          plan_id: string
-          question: string
-          source_url: string
-          topic_title: string
-        }
-        Update: {
-          created_at?: string
-          day_number?: number
-          difficulty?: string
-          exercise_prompt?: string
-          expected_answer_summary?: string
-          id?: string
-          plan_id?: string
-          question?: string
-          source_url?: string
-          topic_title?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "daily_tasks_plan_id_fkey"
-            columns: ["plan_id"]
+            foreignKeyName: "conversations_user_b_fkey"
+            columns: ["user_b"]
             isOneToOne: false
-            referencedRelation: "user_learning_plans"
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -408,6 +532,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dsa_completions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -452,6 +583,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "dsa_streaks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       event_rsvps: {
@@ -490,6 +628,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_rsvps_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -541,6 +686,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -640,6 +792,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_experiences_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -759,52 +918,22 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "karma_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
         ]
-      }
-      learning_tracks: {
-        Row: {
-          branches: string[]
-          category: string
-          created_at: string
-          description: string
-          icon: string
-          id: string
-          is_common: boolean
-          name: string
-          slug: string
-          source_base_url: string
-        }
-        Insert: {
-          branches?: string[]
-          category?: string
-          created_at?: string
-          description?: string
-          icon?: string
-          id?: string
-          is_common?: boolean
-          name: string
-          slug: string
-          source_base_url?: string
-        }
-        Update: {
-          branches?: string[]
-          category?: string
-          created_at?: string
-          description?: string
-          icon?: string
-          id?: string
-          is_common?: boolean
-          name?: string
-          slug?: string
-          source_base_url?: string
-        }
-        Relationships: []
       }
       marketplace_listings: {
         Row: {
           category: string
           created_at: string
           description: string
+          hidden_at: string | null
+          hidden_reason: string | null
           id: string
           image_url: string | null
           price: number
@@ -817,6 +946,8 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
           image_url?: string | null
           price?: number
@@ -829,6 +960,8 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
           image_url?: string | null
           price?: number
@@ -850,6 +983,13 @@ export type Database = {
             columns: ["seller_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_listings_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -889,6 +1029,13 @@ export type Database = {
             columns: ["buyer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_purchases_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
           {
@@ -958,6 +1105,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "mentorship_requests_mentor_id_fkey"
+            columns: ["mentor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "mentorship_requests_requester_id_fkey"
             columns: ["requester_id"]
             isOneToOne: false
@@ -971,6 +1125,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "mentorship_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       messages: {
@@ -980,6 +1141,8 @@ export type Database = {
           content: string | null
           conversation_id: string
           created_at: string
+          hidden_at: string | null
+          hidden_reason: string | null
           id: string
           read: boolean
           sender_id: string
@@ -990,6 +1153,8 @@ export type Database = {
           content?: string | null
           conversation_id: string
           created_at?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
           read?: boolean
           sender_id: string
@@ -1000,6 +1165,8 @@ export type Database = {
           content?: string | null
           conversation_id?: string
           created_at?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
           read?: boolean
           sender_id?: string
@@ -1024,6 +1191,74 @@ export type Database = {
             columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderation_events: {
+        Row: {
+          author_id: string | null
+          created_at: string
+          decision: string
+          id: string
+          matched_terms: string[] | null
+          model: string | null
+          reason: string | null
+          scores: Json | null
+          target_id: string
+          target_table: string
+        }
+        Insert: {
+          author_id?: string | null
+          created_at?: string
+          decision: string
+          id?: string
+          matched_terms?: string[] | null
+          model?: string | null
+          reason?: string | null
+          scores?: Json | null
+          target_id: string
+          target_table: string
+        }
+        Update: {
+          author_id?: string | null
+          created_at?: string
+          decision?: string
+          id?: string
+          matched_terms?: string[] | null
+          model?: string | null
+          reason?: string | null
+          scores?: Json | null
+          target_id?: string
+          target_table?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_events_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moderation_events_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moderation_events_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1096,6 +1331,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "post_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "post_comments_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
@@ -1142,6 +1384,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "post_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       posts: {
@@ -1151,7 +1400,12 @@ export type Database = {
           author_id: string
           content: string
           created_at: string
+          hidden_at: string | null
+          hidden_reason: string | null
           id: string
+          moderated_at: string | null
+          moderation_reason: string | null
+          moderation_status: Database["public"]["Enums"]["moderation_status"]
           pinned: boolean
           tag: string | null
           type: Database["public"]["Enums"]["post_type"]
@@ -1162,7 +1416,12 @@ export type Database = {
           author_id: string
           content: string
           created_at?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
+          moderated_at?: string | null
+          moderation_reason?: string | null
+          moderation_status?: Database["public"]["Enums"]["moderation_status"]
           pinned?: boolean
           tag?: string | null
           type?: Database["public"]["Enums"]["post_type"]
@@ -1173,7 +1432,12 @@ export type Database = {
           author_id?: string
           content?: string
           created_at?: string
+          hidden_at?: string | null
+          hidden_reason?: string | null
           id?: string
+          moderated_at?: string | null
+          moderation_reason?: string | null
+          moderation_status?: Database["public"]["Enums"]["moderation_status"]
           pinned?: boolean
           tag?: string | null
           type?: Database["public"]["Enums"]["post_type"]
@@ -1193,6 +1457,80 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_views: {
+        Row: {
+          id: string
+          source: string
+          viewed_at: string
+          viewed_id: string
+          viewer_id: string
+        }
+        Insert: {
+          id?: string
+          source?: string
+          viewed_at?: string
+          viewed_id: string
+          viewer_id: string
+        }
+        Update: {
+          id?: string
+          source?: string
+          viewed_at?: string
+          viewed_id?: string
+          viewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_views_viewed_id_fkey"
+            columns: ["viewed_id"]
+            isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_views_viewed_id_fkey"
+            columns: ["viewed_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_views_viewed_id_fkey"
+            columns: ["viewed_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_views_viewer_id_fkey"
+            columns: ["viewer_id"]
+            isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_views_viewer_id_fkey"
+            columns: ["viewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_views_viewer_id_fkey"
+            columns: ["viewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -1203,7 +1541,10 @@ export type Database = {
           college_email_verified: boolean
           college_name: string | null
           company: string | null
+          consent_acknowledged: boolean
+          consent_acknowledged_at: string | null
           created_at: string
+          discoverable: boolean
           github: string | null
           graduation_year: number | null
           id: string
@@ -1218,11 +1559,14 @@ export type Database = {
           onboarded: boolean
           open_to_mentor: boolean
           placement_status: Database["public"]["Enums"]["placement_status"]
+          profile_visibility: string
+          recruiter_visible: boolean
           resume_url: string | null
           skills: string[]
           updated_at: string
           username: string | null
           verified: boolean
+          views_incognito: boolean
           weekly_capacity: number
           year: Database["public"]["Enums"]["year_type"] | null
         }
@@ -1233,7 +1577,10 @@ export type Database = {
           college_email_verified?: boolean
           college_name?: string | null
           company?: string | null
+          consent_acknowledged?: boolean
+          consent_acknowledged_at?: string | null
           created_at?: string
+          discoverable?: boolean
           github?: string | null
           graduation_year?: number | null
           id: string
@@ -1248,11 +1595,14 @@ export type Database = {
           onboarded?: boolean
           open_to_mentor?: boolean
           placement_status?: Database["public"]["Enums"]["placement_status"]
+          profile_visibility?: string
+          recruiter_visible?: boolean
           resume_url?: string | null
           skills?: string[]
           updated_at?: string
           username?: string | null
           verified?: boolean
+          views_incognito?: boolean
           weekly_capacity?: number
           year?: Database["public"]["Enums"]["year_type"] | null
         }
@@ -1263,7 +1613,10 @@ export type Database = {
           college_email_verified?: boolean
           college_name?: string | null
           company?: string | null
+          consent_acknowledged?: boolean
+          consent_acknowledged_at?: string | null
           created_at?: string
+          discoverable?: boolean
           github?: string | null
           graduation_year?: number | null
           id?: string
@@ -1278,121 +1631,18 @@ export type Database = {
           onboarded?: boolean
           open_to_mentor?: boolean
           placement_status?: Database["public"]["Enums"]["placement_status"]
+          profile_visibility?: string
+          recruiter_visible?: boolean
           resume_url?: string | null
           skills?: string[]
           updated_at?: string
           username?: string | null
           verified?: boolean
+          views_incognito?: boolean
           weekly_capacity?: number
           year?: Database["public"]["Enums"]["year_type"] | null
         }
         Relationships: []
-      }
-      recruiter_notes: {
-        Row: {
-          created_at: string
-          id: string
-          note: string
-          recruiter_id: string
-          student_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          note?: string
-          recruiter_id: string
-          student_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          note?: string
-          recruiter_id?: string
-          student_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "recruiter_notes_recruiter_id_fkey"
-            columns: ["recruiter_id"]
-            isOneToOne: false
-            referencedRelation: "employability_score_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_notes_recruiter_id_fkey"
-            columns: ["recruiter_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_notes_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "employability_score_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_notes_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      recruiter_saved_candidates: {
-        Row: {
-          created_at: string
-          id: string
-          recruiter_id: string
-          shortlisted: boolean
-          student_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          recruiter_id: string
-          shortlisted?: boolean
-          student_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          recruiter_id?: string
-          shortlisted?: boolean
-          student_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "recruiter_saved_candidates_recruiter_id_fkey"
-            columns: ["recruiter_id"]
-            isOneToOne: false
-            referencedRelation: "employability_score_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_saved_candidates_recruiter_id_fkey"
-            columns: ["recruiter_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_saved_candidates_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "employability_score_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recruiter_saved_candidates_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       registered_phones: {
         Row: {
@@ -1412,6 +1662,51 @@ export type Database = {
           full_name?: string
           phone_number?: string
           registered_at?: string
+        }
+        Relationships: []
+      }
+      reports: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string
+          details: string | null
+          id: string
+          reason: string
+          reported_user_id: string | null
+          reporter_id: string
+          resolution_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: string
+          reported_user_id?: string | null
+          reporter_id: string
+          resolution_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          reported_user_id?: string | null
+          reporter_id?: string
+          resolution_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -1540,139 +1835,164 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      task_submissions: {
-        Row: {
-          ai_feedback: string
-          ai_hint: string
-          ai_mistakes: string
-          ai_score: number
-          id: string
-          passed: boolean
-          submission_text: string
-          submitted_at: string
-          task_id: string
-          user_id: string
-        }
-        Insert: {
-          ai_feedback?: string
-          ai_hint?: string
-          ai_mistakes?: string
-          ai_score?: number
-          id?: string
-          passed?: boolean
-          submission_text: string
-          submitted_at?: string
-          task_id: string
-          user_id: string
-        }
-        Update: {
-          ai_feedback?: string
-          ai_hint?: string
-          ai_mistakes?: string
-          ai_score?: number
-          id?: string
-          passed?: boolean
-          submission_text?: string
-          submitted_at?: string
-          task_id?: string
-          user_id?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "task_submissions_task_id_fkey"
-            columns: ["task_id"]
+            foreignKeyName: "study_materials_seller_id_fkey"
+            columns: ["seller_id"]
             isOneToOne: false
-            referencedRelation: "daily_tasks"
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
       }
-      track_topics: {
+      user_bans: {
         Row: {
+          banned_by: string | null
+          community_id: string | null
           created_at: string
+          evidence_ref: string | null
+          expires_at: string | null
           id: string
-          level: string
-          order_index: number
-          slug: string
-          source_url: string
-          title: string
-          track_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          level: string
-          order_index?: number
-          slug: string
-          source_url: string
-          title: string
-          track_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          level?: string
-          order_index?: number
-          slug?: string
-          source_url?: string
-          title?: string
-          track_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "track_topics_track_id_fkey"
-            columns: ["track_id"]
-            isOneToOne: false
-            referencedRelation: "learning_tracks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_learning_plans: {
-        Row: {
-          completed_at: string | null
-          created_at: string
-          current_day: number
-          id: string
-          level: string
-          pace_days: number
-          started_at: string
-          status: string
-          track_id: string
+          permanent: boolean
+          reason: string
+          scope: string
           user_id: string
         }
         Insert: {
-          completed_at?: string | null
+          banned_by?: string | null
+          community_id?: string | null
           created_at?: string
-          current_day?: number
+          evidence_ref?: string | null
+          expires_at?: string | null
           id?: string
-          level: string
-          pace_days: number
-          started_at?: string
-          status?: string
-          track_id: string
+          permanent?: boolean
+          reason?: string
+          scope: string
           user_id: string
         }
         Update: {
-          completed_at?: string | null
+          banned_by?: string | null
+          community_id?: string | null
           created_at?: string
-          current_day?: number
+          evidence_ref?: string | null
+          expires_at?: string | null
           id?: string
-          level?: string
-          pace_days?: number
-          started_at?: string
-          status?: string
-          track_id?: string
+          permanent?: boolean
+          reason?: string
+          scope?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "user_learning_plans_track_id_fkey"
-            columns: ["track_id"]
+            foreignKeyName: "user_bans_banned_by_fkey"
+            columns: ["banned_by"]
             isOneToOne: false
-            referencedRelation: "learning_tracks"
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_bans_banned_by_fkey"
+            columns: ["banned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_bans_banned_by_fkey"
+            columns: ["banned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_bans_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_bans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_bans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_bans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "employability_score_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1711,6 +2031,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -1733,6 +2060,7 @@ export type Database = {
             | Database["public"]["Enums"]["placement_status"]
             | null
           posts_count: number | null
+          recruiter_visible: boolean | null
           skills: string[] | null
           total_completed: number | null
           username: string | null
@@ -1843,6 +2171,60 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles_public: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          branch: Database["public"]["Enums"]["branch_type"] | null
+          college_email_verified: boolean | null
+          company: string | null
+          id: string | null
+          interests: string[] | null
+          looking_for_mentor_in: string[] | null
+          name: string | null
+          open_to_mentor: boolean | null
+          placement_status:
+            | Database["public"]["Enums"]["placement_status"]
+            | null
+          skills: string[] | null
+          year: Database["public"]["Enums"]["year_type"] | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          branch?: Database["public"]["Enums"]["branch_type"] | null
+          college_email_verified?: boolean | null
+          company?: string | null
+          id?: string | null
+          interests?: string[] | null
+          looking_for_mentor_in?: string[] | null
+          name?: string | null
+          open_to_mentor?: boolean | null
+          placement_status?:
+            | Database["public"]["Enums"]["placement_status"]
+            | null
+          skills?: string[] | null
+          year?: Database["public"]["Enums"]["year_type"] | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          branch?: Database["public"]["Enums"]["branch_type"] | null
+          college_email_verified?: boolean | null
+          company?: string | null
+          id?: string | null
+          interests?: string[] | null
+          looking_for_mentor_in?: string[] | null
+          name?: string | null
+          open_to_mentor?: boolean | null
+          placement_status?:
+            | Database["public"]["Enums"]["placement_status"]
+            | null
+          skills?: string[] | null
+          year?: Database["public"]["Enums"]["year_type"] | null
+        }
+        Relationships: []
+      }
       top_selling_materials: {
         Row: {
           last_sale_at: string | null
@@ -1874,15 +2256,29 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "study_materials_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Functions: {
-      are_connected: { Args: { a: string; b: string }; Returns: boolean }
       cleanup_expired_otp_codes: { Args: never; Returns: number }
+      delete_community_message: {
+        Args: { _message_id: string }
+        Returns: undefined
+      }
       get_or_create_conversation: {
         Args: { other_user: string }
         Returns: string
+      }
+      has_active_ban: {
+        Args: { _cid?: string; _uid: string }
+        Returns: boolean
       }
       has_role: {
         Args: {
@@ -1895,6 +2291,7 @@ export type Database = {
         Args: { _mid: string; _uid: string }
         Returns: boolean
       }
+      is_blocked_pair: { Args: { a: string; b: string }; Returns: boolean }
       is_community_admin: {
         Args: { _cid: string; _uid: string }
         Returns: boolean
@@ -1903,11 +2300,19 @@ export type Database = {
         Args: { _cid: string; _uid: string }
         Returns: boolean
       }
+      is_community_moderator: {
+        Args: { _cid: string; _uid: string }
+        Returns: boolean
+      }
       is_conversation_participant: {
         Args: { conv_id: string; uid: string }
         Returns: boolean
       }
       is_phone_registered: { Args: { _phone: string }; Returns: boolean }
+      log_profile_view: {
+        Args: { _source?: string; _viewed: string }
+        Returns: undefined
+      }
       lookup_student_by_enrollment: {
         Args: { _q: string }
         Returns: {
@@ -1925,6 +2330,10 @@ export type Database = {
       }
       purchase_material: { Args: { _material_id: string }; Returns: string }
       refresh_top_selling_materials: { Args: never; Returns: undefined }
+      remove_community_member: {
+        Args: { _community_id: string; _user_id: string }
+        Returns: undefined
+      }
       search_my_library: {
         Args: { match_count?: number; query_embedding: string }
         Returns: {
@@ -1933,9 +2342,17 @@ export type Database = {
           similarity: number
         }[]
       }
+      transfer_community_moderator: {
+        Args: { _community_id: string; _new_mod: string }
+        Returns: undefined
+      }
+      update_community_rules: {
+        Args: { _community_id: string; _rules: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      app_role: "student" | "recruiter" | "admin"
+      app_role: "student" | "recruiter" | "admin" | "moderator"
       application_source:
         | "tpo"
         | "referral"
@@ -1963,6 +2380,7 @@ export type Database = {
         | "mock_interview"
         | "aspire_engage"
       mentorship_status: "pending" | "accepted" | "declined"
+      moderation_status: "pending" | "approved" | "rejected" | "shadow"
       placement_status: "Placed" | "Looking" | "Interning" | "N/A"
       post_type: "update" | "question" | "achievement" | "resource"
       role_type: "internship" | "full_time" | "ppo"
@@ -2102,7 +2520,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["student", "recruiter", "admin"],
+      app_role: ["student", "recruiter", "admin", "moderator"],
       application_source: [
         "tpo",
         "referral",
@@ -2133,6 +2551,7 @@ export const Constants = {
         "aspire_engage",
       ],
       mentorship_status: ["pending", "accepted", "declined"],
+      moderation_status: ["pending", "approved", "rejected", "shadow"],
       placement_status: ["Placed", "Looking", "Interning", "N/A"],
       post_type: ["update", "question", "achievement", "resource"],
       role_type: ["internship", "full_time", "ppo"],
