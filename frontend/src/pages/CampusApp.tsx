@@ -47,6 +47,13 @@ const CampusApp = () => {
     <PhoneShell>
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/60 px-4 py-2 flex items-center gap-2">
         <p className="text-sm font-bold flex-1">Hi, {name.split(" ")[0]} 👋</p>
+        <button
+          onClick={() => navigate("/course/python")}
+          aria-label="Open Courses"
+          className="mr-2 px-3 py-1 rounded-md bg-accent/10 text-sm font-semibold hover:bg-accent/20"
+        >
+          Courses
+        </button>
         <TierPill />
         <button
           onClick={() => navigate("/me")}
