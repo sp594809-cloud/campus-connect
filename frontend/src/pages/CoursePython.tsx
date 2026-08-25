@@ -9,7 +9,8 @@ type FileItem = {
 
 const OWNER = "sp594809-cloud"; // update if your python repo is under a different owner
 const REPO = "python"; // repo name
-const CANDIDATE_DIRS = ["course", "lessons", "docs", ""];
+const CANDIDATE_DIRS = ["course", "lessons", "docs", "python-course-app/templates", ""];
+const DEPLOYED_BASE = "https://python-41vy.onrender.com"; // your render URL
 
 export default function CoursePython() {
   const [files, setFiles] = useState<FileItem[] | null>(null);
@@ -33,8 +34,9 @@ export default function CoursePython() {
           }
           const j = await r.json();
           if (!Array.isArray(j)) continue;
+          // accept both md and html files
           const mdFiles = (j as any[])
-            .filter((f) => f.type === "file" && /\.md$/i.test(f.name))
+            .filter((f) => f.type === "file" && (/\.md$/i.test(f.name) || /\.html$/i.test(f.name)))
             .map((f) => ({ name: f.name, path: f.path, download_url: f.download_url } as FileItem));
           if (mdFiles.length) {
             if (!alive) return;
@@ -49,7 +51,7 @@ export default function CoursePython() {
         }
       }
       if (!alive) return;
-      setError("Could not find markdown lessons in the python repo (looked in course/, lessons/, docs/)");
+      setError("Could not find lessons in the python repo (looked in course/, lessons/, docs/, python-course-app/templates)");
       setLoading(false);
     }
 
@@ -79,7 +81,7 @@ export default function CoursePython() {
                     onClick={() => setSelected(f)}
                     className={`text-left w-full p-2 rounded-md hover:bg-accent/10 transition ${selected?.path === f.path ? "bg-accent/20 font-semibold" : ""}`}
                   >
-                    {f.name.replace(/\.md$/i, "")}
+                    {f.name.replace(/\.md$/i, "").replace(/\.html$/i, "")}
                   </button>
                 </li>
               ))}
@@ -88,7 +90,13 @@ export default function CoursePython() {
 
           <main className="col-span-2 bg-card rounded-md p-0 overflow-hidden">
             {selected ? (
-              <CourseLesson downloadUrl={selected.download_url ?? `https://raw.githubusercontent.com/${OWNER}/${REPO}/main/${selected.path}`} cacheKey={`python:${selected.path}`} />
+              // Prefer embedding the deployed Render site; fall back to raw content if embedding blocked
+              <iframe
+                src={getIframeUrl(selected)}
+                title={selected.name}
+                className="w-full h-[calc(100vh-120px)] border-0"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
+              />
             ) : (
               <div className="p-4">Select a lesson</div>
             )}
@@ -97,4 +105,15 @@ export default function CoursePython() {
       </div>
     </div>
   );
+}
+
+function getIframeUrl(selected: FileItem) {
+  // If a download_url exists and points to raw.githubusercontent, use deployed base + relative path
+  // Map repo path like python-course-app/templates/admin.html to the deployed site path
+  if (!selected) return DEPLOYED_BASE;
+  const repoPath = selected.path;
+  // if path contains python-course-app/templates, strip that prefix
+  const rel = repoPath.replace(/^python-course-app\/templates\//, "");
+  // if download_url exists and appears to be raw, use the deployed base
+  return `${DEPLOYED_BASE}/${rel}`;
 }
