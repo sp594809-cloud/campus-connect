@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Building2, ArrowLeft, ExternalLink, Globe, Clock, AlertCircle } from 'lucide-react';
-import { CompanyNewsCard, CompanyReviewsList } from '@/components/companies';
-import { useCompanyNewsPolling } from '@/hooks/useCompanyNewsPolling';
+import { ArrowLeft, ExternalLink, Globe, AlertCircle } from 'lucide-react';
+import { CompanyReviewsList } from '@/components/companies';
 import {
   getCompanyByName,
   getCompanyReviews,
@@ -52,18 +51,6 @@ export function CompanyDetailScreen() {
       })
       .finally(() => setLoading(false));
   }, [name]);
-
-  // Polling hook for news (filtered by company)
-  const {
-    news,
-    isLoading: newsLoading,
-    isError: newsError,
-    lastUpdated,
-    refetch,
-  } = useCompanyNewsPolling({
-    companyId: company?.id,
-    refreshIntervalMs: 3 * 60 * 1000,
-  });
 
   if (loading) {
     return (
@@ -157,45 +144,6 @@ export function CompanyDetailScreen() {
         <CompanyReviewsList reviews={reviews} />
       </div>
 
-      {/* News Section */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold">Latest News</h3>
-          {lastUpdated && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              <span>{lastUpdated.toLocaleTimeString()}</span>
-            </div>
-          )}
-        </div>
-
-        {newsError ? (
-          <div className="text-center py-8 bg-muted/30 rounded-lg">
-            <AlertCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Failed to load news</p>
-            <button
-              onClick={() => refetch()}
-              className="text-sm text-primary hover:underline mt-2"
-            >
-              Try again
-            </button>
-          </div>
-        ) : newsLoading ? (
-          <div className="text-center py-8">
-            <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          </div>
-        ) : news.length > 0 ? (
-          <div className="grid gap-3">
-            {news.map((item) => (
-              <CompanyNewsCard key={item.id} news={item} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 bg-muted/30 rounded-lg">
-            <p className="text-sm text-muted-foreground">No news available</p>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
