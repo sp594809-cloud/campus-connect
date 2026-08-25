@@ -25,7 +25,7 @@ export const PrivacySettings = () => {
   const save = async (patch: Record<string, unknown>) => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase.from("profiles").update(patch).eq("id", user.id);
+    const { error } = await supabase.from("profiles").update(patch as never).eq("id", user.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     await refreshProfile();
