@@ -9,7 +9,8 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig(({ mode }) => ({
   root: __dirname,
   build: {
-    outDir: path.resolve(__dirname, "../dist"),
+    // Output inside frontend/ so Vercel/Netlify/Render Static can publish `dist`
+    outDir: path.resolve(__dirname, "dist"),
     emptyOutDir: true,
   },
   server: {

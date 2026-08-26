@@ -26,6 +26,7 @@ const CompanyDetailScreen = lazy(() => import("./components/campus/screens/Compa
 const AdminModeration = lazy(() => import("./pages/AdminModeration.tsx"));
 const Banned = lazy(() => import("./pages/Banned.tsx"));
 const CoursePython = lazy(() => import("./pages/CoursePython.tsx"));
+const CoursePythonModule = lazy(() => import("./pages/CoursePythonModule.tsx"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
@@ -69,6 +70,7 @@ const App = () => (
                   <Route path="/admin/moderation" element={<AdminModeration />} />
                   <Route path="/banned" element={<Banned />} />
                   <Route path="/course/python" element={<CoursePython />} />
+                  <Route path="/course/python/:moduleId" element={<CoursePythonModule />} />
                   <Route path="/app" element={<Navigate to="/campus" replace />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
