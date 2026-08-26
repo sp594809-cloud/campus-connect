@@ -12,7 +12,7 @@ function escapeHtml(s: string): string {
     .replace(/&/g, "&")
     .replace(/</g, "<")
     .replace(/>/g, ">")
-    .replace(/"/g, """);
+    .replace(/"/g, "&quot;");
 }
 
 function inlineFormat(text: string): ReactNode[] {
