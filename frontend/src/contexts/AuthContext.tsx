@@ -225,7 +225,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
         signOut: async () => {
           await supabase.auth.signOut();
-          navigate("/auth", { replace: true });
+          navigate("/", { replace: true });
         },
       }), [user, session, profile, loading, loadProfile, navigate])}
     >
