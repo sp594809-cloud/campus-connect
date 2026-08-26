@@ -25,6 +25,7 @@ const Karma = lazy(() => import("./pages/Karma.tsx"));
 const CompanyDetailScreen = lazy(() => import("./components/campus/screens/CompanyDetailScreen.tsx"));
 const AdminModeration = lazy(() => import("./pages/AdminModeration.tsx"));
 const Banned = lazy(() => import("./pages/Banned.tsx"));
+const CoursePython = lazy(() => import("./pages/CoursePython.tsx"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
@@ -52,23 +53,24 @@ const App = () => (
             <LazyErrorBoundary>
               <Suspense fallback={<LazyLoadingFallback />}>
                 <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/onboarding" element={<StudentOnboarding />} />
-            <Route path="/campus" element={<CampusApp />} />
-            <Route path="/me" element={<StudentProfile />} />
-            <Route path="/u/:id" element={<UserProfile />} />
-            <Route path="/interview" element={<InterviewExperiences />} />
-            <Route path="/interview/new" element={<InterviewPostFlow />} />
-            <Route path="/interview/compare" element={<InterviewCompare />} />
-            <Route path="/interview/:id" element={<InterviewExperienceDetail />} />
-            <Route path="/mentors" element={<MentorDirectory />} />
-            <Route path="/karma" element={<Karma />} />
-            <Route path="/companies/:name" element={<CompanyDetailScreen />} />
-            <Route path="/admin/moderation" element={<AdminModeration />} />
-            <Route path="/banned" element={<Banned />} />
-            <Route path="/app" element={<Navigate to="/campus" replace />} />
-              <Route path="*" element={<NotFound />} />
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/onboarding" element={<StudentOnboarding />} />
+                  <Route path="/campus" element={<CampusApp />} />
+                  <Route path="/me" element={<StudentProfile />} />
+                  <Route path="/u/:id" element={<UserProfile />} />
+                  <Route path="/interview" element={<InterviewExperiences />} />
+                  <Route path="/interview/new" element={<InterviewPostFlow />} />
+                  <Route path="/interview/compare" element={<InterviewCompare />} />
+                  <Route path="/interview/:id" element={<InterviewExperienceDetail />} />
+                  <Route path="/mentors" element={<MentorDirectory />} />
+                  <Route path="/karma" element={<Karma />} />
+                  <Route path="/companies/:name" element={<CompanyDetailScreen />} />
+                  <Route path="/admin/moderation" element={<AdminModeration />} />
+                  <Route path="/banned" element={<Banned />} />
+                  <Route path="/course/python" element={<CoursePython />} />
+                  <Route path="/app" element={<Navigate to="/campus" replace />} />
+                  <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
             </LazyErrorBoundary>

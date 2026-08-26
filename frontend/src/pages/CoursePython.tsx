@@ -1,119 +1,83 @@
-import { useEffect, useState } from "react";
-import CourseLesson from "@/components/CourseLesson";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, ExternalLink, BookOpen } from "lucide-react";
 
-type FileItem = {
-  name: string;
-  path: string;
-  download_url?: string | null;
-};
+/** Deployed Python Mastery Course (Flask app from sp594809-cloud/python) */
+const DEPLOYED_COURSE_URL = "https://python-41vy.onrender.com";
+const GITHUB_COURSE_URL = "https://github.com/sp594809-cloud/python";
 
-const OWNER = "sp594809-cloud"; // update if your python repo is under a different owner
-const REPO = "python"; // repo name
-const CANDIDATE_DIRS = ["course", "lessons", "docs", "python-course-app/templates", ""];
-const DEPLOYED_BASE = "https://python-41vy.onrender.com"; // your render URL
-
+/**
+ * Python Course page — embeds the full course from the python repo / Render deploy.
+ * Students reach this via the "Courses" button in Campus Connect.
+ */
 export default function CoursePython() {
-  const [files, setFiles] = useState<FileItem[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<FileItem | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-
-    async function findAndList() {
-      setLoading(true);
-      for (const dir of CANDIDATE_DIRS) {
-        const path = dir ? `/${dir}` : "";
-        const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents${path}`;
-        try {
-          const r = await fetch(url);
-          if (!r.ok) {
-            // try next
-            continue;
-          }
-          const j = await r.json();
-          if (!Array.isArray(j)) continue;
-          // accept both md and html files
-          const mdFiles = (j as any[])
-            .filter((f) => f.type === "file" && (/\.md$/i.test(f.name) || /\.html$/i.test(f.name)))
-            .map((f) => ({ name: f.name, path: f.path, download_url: f.download_url } as FileItem));
-          if (mdFiles.length) {
-            if (!alive) return;
-            setFiles(mdFiles);
-            setSelected(mdFiles[0]);
-            setLoading(false);
-            return;
-          }
-        } catch (e) {
-          // continue to next
-          continue;
-        }
-      }
-      if (!alive) return;
-      setError("Could not find lessons in the python repo (looked in course/, lessons/, docs/, python-course-app/templates)");
-      setLoading(false);
-    }
-
-    findAndList();
-    return () => { alive = false; };
-  }, []);
-
-  if (loading) return <div className="p-4">Loading course…</div>;
-  if (error) return <div className="p-4 text-red-600">{error}</div>;
-  if (!files || files.length === 0) return <div className="p-4">No lessons found.</div>;
+  const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background/0 p-4">
-      <div className="mx-auto max-w-3xl">
-        <header className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">Python Course</h1>
-          <a className="text-sm text-muted-foreground underline" href={`https://github.com/${OWNER}/${REPO}`} target="_blank" rel="noreferrer">View source</a>
-        </header>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Sticky header with back to campus */}
+      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/95 backdrop-blur-md">
+        <div className="mx-auto max-w-5xl px-3 py-2.5 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate("/campus")}
+            className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-secondary transition-smooth"
+            aria-label="Back to Campus"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">Campus</span>
+          </button>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <aside className="col-span-1 bg-card rounded-md p-3">
-            <h2 className="font-semibold mb-2">Lessons</h2>
-            <ul className="flex flex-col gap-1">
-              {files.map((f) => (
-                <li key={f.path}>
-                  <button
-                    onClick={() => setSelected(f)}
-                    className={`text-left w-full p-2 rounded-md hover:bg-accent/10 transition ${selected?.path === f.path ? "bg-accent/20 font-semibold" : ""}`}
-                  >
-                    {f.name.replace(/\.md$/i, "").replace(/\.html$/i, "")}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </aside>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="h-8 w-8 rounded-xl bg-gradient-hero text-white flex items-center justify-center shrink-0 shadow-soft">
+              <BookOpen className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <h1 className="text-sm font-bold truncate">Python Course</h1>
+              <p className="text-[11px] text-muted-foreground truncate">From zero to professional</p>
+            </div>
+          </div>
 
-          <main className="col-span-2 bg-card rounded-md p-0 overflow-hidden">
-            {selected ? (
-              // Prefer embedding the deployed Render site; fall back to raw content if embedding blocked
-              <iframe
-                src={getIframeUrl(selected)}
-                title={selected.name}
-                className="w-full h-[calc(100vh-120px)] border-0"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
-              />
-            ) : (
-              <div className="p-4">Select a lesson</div>
-            )}
-          </main>
+          <a
+            href={DEPLOYED_COURSE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary transition-smooth"
+            title="Open full course in new tab"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Open</span>
+          </a>
+          <a
+            href={GITHUB_COURSE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs text-muted-foreground underline underline-offset-2 hidden md:inline"
+          >
+            Source
+          </a>
         </div>
-      </div>
+      </header>
+
+      {/* Full course app embedded from Render */}
+      <main className="flex-1 relative">
+        <iframe
+          src={DEPLOYED_COURSE_URL}
+          title="Python Mastery Course"
+          className="absolute inset-0 w-full h-full border-0"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox"
+          allow="clipboard-read; clipboard-write"
+        />
+      </main>
+
+      {/* Fallback note if iframe is blocked or Render is cold-starting */}
+      <noscript>
+        <div className="p-6 text-center">
+          <p className="mb-2">JavaScript is required to view the course in-app.</p>
+          <a className="underline font-semibold" href={DEPLOYED_COURSE_URL}>
+            Open Python Course
+          </a>
+        </div>
+      </noscript>
     </div>
   );
-}
-
-function getIframeUrl(selected: FileItem) {
-  // If a download_url exists and points to raw.githubusercontent, use deployed base + relative path
-  // Map repo path like python-course-app/templates/admin.html to the deployed site path
-  if (!selected) return DEPLOYED_BASE;
-  const repoPath = selected.path;
-  // if path contains python-course-app/templates, strip that prefix
-  const rel = repoPath.replace(/^python-course-app\/templates\//, "");
-  // if download_url exists and appears to be raw, use the deployed base
-  return `${DEPLOYED_BASE}/${rel}`;
 }
