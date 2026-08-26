@@ -22,8 +22,12 @@ export const CodeOfConductDialog = ({ communityId, communityName, open, onClose,
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) { setAgreed(false); setScrolledEnd(false); return; }
+    useEffect(() => {
+    if (!open) {
+      setAgreed(false);
+      setScrolledEnd(false);
+      return;
+    }
     setLoading(true);
     (async () => {
       const { data } = await supabase
@@ -31,9 +35,24 @@ export const CodeOfConductDialog = ({ communityId, communityName, open, onClose,
         .select("content_md,version")
         .eq("community_id", communityId)
         .maybeSingle();
-      setContent(data?.content_md ?? "Be respectful. No hate speech. Follow community guidelines.");
+      setContent(
+        data?.content_md ??
+          "Be respectful. No hate speech. Follow community guidelines."
+      );
       setVersion(data?.version ?? 1);
       setLoading(false);
+
+      // If rules fit on screen (no scrollbar), enable the checkbox
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (!el) {
+          setScrolledEnd(true);
+          return;
+        }
+        if (el.scrollHeight <= el.clientHeight + 8) {
+          setScrolledEnd(true);
+        }
+      });
     })();
   }, [open, communityId]);
 
