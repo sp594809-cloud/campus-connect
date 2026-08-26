@@ -19,7 +19,7 @@ const buildAppId = (fullName: string, enrollmentId: string) => {
 
 // Internal Auth credentials only (not displayed). Same student → same account.
 const credsFor = (appId: string, enrollmentId: string) => ({
-  email: `${enrollmentId.trim().toLowerCase().replace(/[^a-z0-9]/g, "")}@students.campus.local`,
+  email: `${enrollmentId.trim().toLowerCase().replace(/[^a-z0-9]/g, "")}@mail.ljku.edu.in`,
   password: `cc-${appId}-v1`,
 });
 
@@ -89,13 +89,11 @@ const StudentRegistrationForm = () => {
       if (!signIn.error && signIn.data?.session) {
         signInData = signIn.data;
       } else {
-        // First-time user: create account (no email verification UI — depends on Supabase project settings)
         const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { name: student.full_name, phone: phoneNumber },
-            // Do not send a confirmation redirect flow for testing UX
           },
         });
         if (signUpErr) {
