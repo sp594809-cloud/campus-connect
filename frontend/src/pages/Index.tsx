@@ -1,27 +1,35 @@
-// StudentRegistrationForm.tsx — Phone-only sign-in (no OTP, no email).
-// Phone -> show student details from the official roster -> Continue signs them in.
+// Phone-only sign-in for students (no OTP UI).
+// Internally uses a deterministic email+password with Supabase Auth (not shown to the user).
+// For testing: disable "Confirm email" in Supabase Auth → Providers → Email.
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CheckCircle2, Hash, IdCard, Loader2, Mail, Phone, User, XCircle } from "lucide-react";
+import { CheckCircle2, Hash, IdCard, Loader2, Phone, User, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AuthResponse, AuthTokenResponsePassword } from "@supabase/supabase-js";
 
 const PHONE_REGEX = /^[6-9]\d{9}$/;
 
-// Unique app ID = slug(name) + "-" + enrollmentId — same student always gets the same id.
 const buildAppId = (fullName: string, enrollmentId: string) => {
   const nameSlug = fullName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
   const enr = enrollmentId.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
   return `${nameSlug}-${enr}`;
 };
 
-// Deterministic Supabase credentials derived from the enrollment id.
+// Internal Auth credentials only (not displayed). Same student → same account.
 const credsFor = (appId: string, enrollmentId: string) => ({
-  email: `${enrollmentId.trim().toLowerCase().replace(/[^a-z0-9]/g, "")}@mail.ljku.edu.in`,
+  email: `${enrollmentId.trim().toLowerCase().replace(/[^a-z0-9]/g, "")}@students.campus.local`,
   password: `cc-${appId}-v1`,
 });
+
+const friendlyAuthError = (msg: string) => {
+  const m = msg.toLowerCase();
+  if (m.includes("confirm") || m.includes("email not confirmed") || m.includes("not confirmed")) {
+    return "Account needs confirmation in Supabase. For testing: Auth → Providers → Email → turn OFF Confirm email, then try again.";
+  }
+  return msg;
+};
 
 type Student = { full_name: string; enrollment_id: string; phone_number: string };
 type AuthSuccess = AuthResponse | AuthTokenResponsePassword;
@@ -41,7 +49,6 @@ const StudentRegistrationForm = () => {
   }, [session, profile, authLoading, navigate]);
 
   const appId = student ? buildAppId(student.full_name, student.enrollment_id) : "";
-  const studentEmail = student ? credsFor(appId, student.enrollment_id).email : "";
 
   const lookupStudent = async () => {
     setError("");
@@ -77,23 +84,43 @@ const StudentRegistrationForm = () => {
       const id = buildAppId(student.full_name, student.enrollment_id);
       const { email, password } = credsFor(id, student.enrollment_id);
       let signInData: AuthSuccess["data"] | null = null;
+
       const signIn = await supabase.auth.signInWithPassword({ email, password });
-      const signInErr = signIn.error;
-      signInData = signIn.data;
-      if (signInErr) {
+      if (!signIn.error && signIn.data?.session) {
+        signInData = signIn.data;
+      } else {
+        // First-time user: create account (no email verification UI — depends on Supabase project settings)
         const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-          email, password, options: { data: { name: student.full_name } },
+          email,
+          password,
+          options: {
+            data: { name: student.full_name, phone: phoneNumber },
+            // Do not send a confirmation redirect flow for testing UX
+          },
         });
-        if (signUpErr) { setError(signUpErr.message); toast.error(signUpErr.message); return; }
+        if (signUpErr) {
+          const msg = friendlyAuthError(signUpErr.message);
+          setError(msg); toast.error(msg); return;
+        }
         signInData = signUpData;
+
         if (!signInData?.session) {
           const retry = await supabase.auth.signInWithPassword({ email, password });
-          if (retry.error) { setError(retry.error.message); toast.error(retry.error.message); return; }
+          if (retry.error) {
+            const msg = friendlyAuthError(retry.error.message);
+            setError(msg); toast.error(msg); return;
+          }
           signInData = retry.data;
         }
       }
+
       const uid = signInData?.user?.id;
-      if (!uid) { const m = "Sign-in failed. Please try again."; setError(m); toast.error(m); return; }
+      if (!uid || !signInData?.session) {
+        const m = friendlyAuthError(
+          "Sign-in failed (no session). For testing turn OFF email confirmation in Supabase Auth settings."
+        );
+        setError(m); toast.error(m); return;
+      }
 
       const { error: regErr } = await supabase
         .from("registered_phones")
@@ -115,7 +142,7 @@ const StudentRegistrationForm = () => {
       toast.success(`Welcome, ${student.full_name.split(" ")[0]}!`);
       navigate(prof?.onboarded ? "/campus" : "/onboarding", { replace: true });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Sign-in failed. Please try again.";
+      const msg = friendlyAuthError(e instanceof Error ? e.message : "Sign-in failed. Please try again.");
       setError(msg); toast.error(msg);
     } finally { setSigningIn(false); }
   };
@@ -173,7 +200,6 @@ const StudentRegistrationForm = () => {
 
                 <Field icon={User} label="Full Name" value={student.full_name} />
                 <Field icon={Hash} label="Enrollment Number" value={student.enrollment_id} />
-                <Field icon={Mail} label="Student Email" value={studentEmail} />
                 <Field icon={IdCard} label="Unique App ID" value={appId} mono />
 
                 {error && (
