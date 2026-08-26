@@ -29,6 +29,7 @@ const CoursePython = lazy(() => import("./pages/CoursePython.tsx"));
 const CoursePythonModule = lazy(() => import("./pages/CoursePythonModule.tsx"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { PwaInstallPrompt } from "./components/PwaInstallPrompt";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,6 +49,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <PwaInstallPrompt />
       <BrowserRouter>
         <AuthProvider>
           <ErrorBoundary>

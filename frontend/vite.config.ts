@@ -26,15 +26,21 @@ export default defineConfig(({ mode }) => ({
     mcpPlugin(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "robots.txt"],
+      includeAssets: ["favicon.svg", "favicon.ico", "apple-touch-icon.png", "robots.txt"],
       manifest: {
         name: "Campus Connect",
         short_name: "Campus",
+        description: "Engineering college network — peers, mentors, courses & placements",
         start_url: "/",
+        scope: "/",
         display: "standalone",
+        orientation: "portrait-primary",
+        background_color: "#faf8f5",
+        theme_color: "#1e2a5a",
         icons: [
-          { src: "/pwa-192.png", sizes: "192x192", type: "image/png" },
-          { src: "/pwa-512.png", sizes: "512x512", type: "image/png" },
+          { src: "/pwa-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "/pwa-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "/pwa-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       workbox: {
